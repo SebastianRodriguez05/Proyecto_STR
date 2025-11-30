@@ -1,0 +1,2 @@
+source D:/esp_projects/project_http/build/bootloader/gdbinit/symbols
+source D:/esp_projects/project_http/build/bootloader/gdbinit/connect

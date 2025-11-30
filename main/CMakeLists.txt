@@ -1,0 +1,35 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "http_server.c"
+        "wifi_app.c"
+        "rgb_led.c"
+        "fan_driver/fan_driver.c"
+        "ntc_driver/ntc_driver.c"
+        "pir_driver/pir_driver.c"
+        "config_storage.c"
+    INCLUDE_DIRS
+        "."
+        "fan_driver"
+        "ntc_driver"
+        "pir_driver"
+    PRIV_REQUIRES
+        esp_wifi
+        nvs_flash
+        esp_http_server
+        esp_netif
+        esp_driver_gpio
+        esp_driver_ledc
+        esp_adc
+        freertos
+        app_update
+        esp_timer
+        json
+        mqtt  
+    EMBED_FILES
+        "webpage/index.html"
+        "webpage/app.css"
+        "webpage/app.js"
+        "webpage/jquery-3.3.1.min.js"
+        "webpage/favicon.ico"
+)

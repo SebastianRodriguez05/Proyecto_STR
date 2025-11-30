@@ -1,0 +1,11 @@
+Command: cmake -G Ninja -DPYTHON_DEPS_CHECKED=1 -DPYTHON=D:\STR_ESP_2\.espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe -DESP_PLATFORM=1 -DCCACHE_ENABLE=1 D:\esp_projects\project_http
+CMake Error at D:/STR_ESP_1/esp/v5.5.1/esp-idf/tools/cmake/build.cmake:328 (message):
+  Failed to resolve component 'esp-mqtt' required by component 'main':
+  unknown name.
+Call Stack (most recent call first):
+  D:/STR_ESP_1/esp/v5.5.1/esp-idf/tools/cmake/build.cmake:377 (__build_resolve_and_add_req)
+  D:/STR_ESP_1/esp/v5.5.1/esp-idf/tools/cmake/build.cmake:685 (__build_expand_requirements)
+  D:/STR_ESP_1/esp/v5.5.1/esp-idf/tools/cmake/project.cmake:740 (idf_build_process)
+  CMakeLists.txt:11 (project)
+
+
