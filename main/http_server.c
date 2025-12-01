@@ -45,6 +45,8 @@
 
 #include "config_storage.h"
 #include "fan_driver.h"
+#include "ntc_driver.h"
+#include "pir_driver.h"
 
 // Tag used for ESP serial console messages
 static const char TAG[] = "http_server";
@@ -111,16 +113,21 @@ void toogle_led( void )
 
 static esp_err_t http_server_get_dht_sensor_readings_json_handler(httpd_req_t *req)
 {
-	ESP_LOGI(TAG, "/dhtSensor.json requested");
+    ESP_LOGI(TAG, "/dhtSensor.json requested");
 
-	char dhtSensorJSON[100];
+    char json_response[64];
 
-	sprintf(dhtSensorJSON, "{\"temp\":\"%.1f\",\"humidity\":\"%.1f\"}", 30.1, 40.5);
+    // 🔥 Leer la temperatura REAL del NTC
+    float temp_c = ntc_read_celsius();
 
-	httpd_resp_set_type(req, "application/json");
-	httpd_resp_send(req, dhtSensorJSON, strlen(dhtSensorJSON));
+    // Construir JSON simple
+    int len = snprintf(json_response, sizeof(json_response),
+                       "{\"temp\":%.2f}", temp_c);
 
-	return ESP_OK;
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json_response, len);
+
+    return ESP_OK;
 }
 
 static esp_err_t http_server_toogle_led_handler(httpd_req_t *req)

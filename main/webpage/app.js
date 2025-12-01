@@ -452,23 +452,26 @@ function brigthness_up()
 
 
 // ========================
-// Cargar configuración manual al abrir página
+// MODO MANUAL (tarjeta nueva)
 // ========================
-$(document).ready(function () {
-    $.get("/get_manual_config.json", function (cfg) {
-        // Esperamos: { "mode":0/1/2, "manual_pwm":X }
-        if (typeof cfg.manual_pwm !== "undefined") {
-            $("#manual_pwm").val(cfg.manual_pwm);
-            $("#manualPwmLabel").text(cfg.manual_pwm + "%");
-        }
-    });
-});
 
-// ========================
+// Cargar configuración al abrir la página
+function loadManualConfig() {
+    $.getJSON("/get_manual_config.json", function (cfg) {
+        const pwm = (cfg && typeof cfg.manual_pwm !== "undefined") ? cfg.manual_pwm : 0;
+        $("#manual_pwm").val(pwm);
+        $("#manualPwmLabel").text(pwm + "%");
+    });
+}
+
+// Actualizar etiqueta cuando se mueve el slider
+function onManualSliderChange(el) {
+    $("#manualPwmLabel").text(el.value + "%");
+}
+
 // Enviar PWM manual al ESP
-// ========================
 function sendManualPwm() {
-    const pwmVal = $("#manual_pwm").val();
+    const pwmVal = parseInt($("#manual_pwm").val(), 10) || 0;
     const status = $("#manual_pwm_status");
 
     status.text("Guardando y aplicando...");
@@ -477,7 +480,7 @@ function sendManualPwm() {
         url: "/manual_pwm.json",
         method: "POST",
         contentType: "application/json",
-        data: JSON.stringify({ pwm: parseInt(pwmVal) }),
+        data: JSON.stringify({ pwm: pwmVal }),
         success: function () {
             status.text("PWM aplicado: " + pwmVal + "%");
         },
@@ -486,6 +489,16 @@ function sendManualPwm() {
         }
     });
 }
+
+// Registrar eventos al cargar la página
+$(document).ready(function () {
+    loadManualConfig();
+
+    // cuando mueves el slider
+    $("#manual_pwm").on("input change", function () {
+        onManualSliderChange(this);
+    });
+});
 
 
 

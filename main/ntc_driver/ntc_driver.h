@@ -8,7 +8,7 @@
 
 // Unidad y canal ADC usados (ESP32-C6)
 #define NTC_ADC_UNIT        ADC_UNIT_1
-#define NTC_ADC_CHANNEL     ADC_CHANNEL_2   // GPIO2 = ADC1_CH2
+#define NTC_ADC_CHANNEL     ADC_CHANNEL_4   // GPIO2 = ADC1_CH2
 
 // Parámetros eléctricos del módulo
 #define NTC_VCC             3.3f           // Alimentación del módulo (3.3V)

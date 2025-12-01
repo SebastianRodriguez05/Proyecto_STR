@@ -2,10 +2,14 @@
 #include "wifi_app.h"
 #include "config_storage.h"
 #include "fan_driver.h"
+#include "ntc_driver.h"
+#include "pir_driver.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
 
-#define BLINK_GPIO 2
+#define BLINK_GPIO  2
+
+static const char *TAG = "MAIN";
 
 static void configure_led(void)
 {
@@ -15,7 +19,7 @@ static void configure_led(void)
 
 void app_main(void)
 {
-    // Inicializar NVS
+    // NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -24,34 +28,32 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // Inicializar almacenamiento (PWM, modo)
+    // Configuración en flash
     config_storage_init();
 
-    // Inicializar ventilador (LEDC)
-    fan_init();
+    // Drivers de hardware
+    fan_init();     // PWM ventilador
+    ntc_init();     // NTC temperatura
+    pir_init();     // PIR presencia
 
-    // Leer modo y PWM guardado
-    uint8_t mode = config_storage_get_mode();
+    // Leer modo y PWM manual guardado
+    uint8_t mode       = config_storage_get_mode();
     uint8_t manual_pwm = config_storage_get_manual_pwm();
 
-    ESP_LOGI("MAIN", "Modo guardado: %d, PWM guardado: %d %%", mode, manual_pwm);
+    ESP_LOGI(TAG, "Modo guardado: %d, PWM guardado: %d %%", mode, manual_pwm);
 
-    // Aplicar PWM si estamos en modo manual
-    if (mode == 0)
-    {
+    if (mode == 0) {
         fan_set_percent(manual_pwm);
-    }
-    else
-    {
+    } else {
         fan_set_percent(0);
     }
 
-    // Inicializar reloj
+    // Hora por red
     init_obtain_time();
 
-    // LED indicador
+    // LED de prueba
     configure_led();
 
-    // Iniciar WiFi (esto llama al HTTP server internamente)
+    // WiFi + servidor HTTP
     wifi_app_start();
 }

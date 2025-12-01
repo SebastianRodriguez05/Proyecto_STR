@@ -24,6 +24,7 @@
         </header>
 
         <main class="grid">
+            <!-- OTA -->
             <section class="card" id="OTA">
                 <div class="card__header">
                     <p class="eyebrow">OTA</p>
@@ -40,6 +41,7 @@
                 </div>
             </section>
 
+            <!-- WiFi -->
             <section class="card" id="WiFiConnect">
                 <div class="card__header">
                     <p class="eyebrow">Conectividad</p>
@@ -67,6 +69,7 @@
                 </div>
             </section>
 
+            <!-- Temperatura -->
             <section class="card" id="DHT22Sensor">
                 <div class="card__header">
                     <p class="eyebrow">Sensores</p>
@@ -80,6 +83,39 @@
                 </div>
             </section>
 
+            <!-- 🔥 NUEVA TARJETA: Modo Manual -->
+            <section class="card" id="ManualMode">
+                <div class="card__header">
+                    <p class="eyebrow">Modo Manual</p>
+                    <h2>Control del ventilador</h2>
+                </div>
+                <div class="card__content stack">
+                    <label class="field">
+                        <span>Velocidad del ventilador (PWM %)</span>
+                        <input
+                            type="range"
+                            id="manual_pwm"
+                            min="0"
+                            max="100"
+                            value="0"
+                            oninput="onManualSliderChange(this)"
+                        >
+                    </label>
+
+                    <p class="status">
+                        Valor seleccionado:
+                        <span id="manualPwmLabel">0%</span>
+                    </p>
+
+                    <div class="actions">
+                        <button class="btn primary" type="button" onclick="sendManualPwm()">Aplicar</button>
+                    </div>
+
+                    <div class="status highlight" id="manual_pwm_status"></div>
+                </div>
+            </section>
+
+            <!-- Registros leídos -->
             <section class="card" id="Configreading">
                 <div class="card__header">
                     <p class="eyebrow">Registros</p>
@@ -99,6 +135,7 @@
                 </div>
             </section>
 
+            <!-- Programación -->
             <section class="card" id="Insert_mem">
                 <div class="card__header">
                     <p class="eyebrow">Programacion</p>
@@ -150,20 +187,5 @@
             </section>
         </main>
     </div>
-    
-    <div class="card">
-    <h2>Modo Manual</h2>
-
-    <label for="manual_pwm">Velocidad del ventilador (PWM %):</label>
-    <input type="range" id="manual_pwm" min="0" max="100" value="0"
-           oninput="manualPwmLabel.innerText = manual_pwm.value + '%'">
-
-    <p>Valor seleccionado: <span id="manualPwmLabel">0%</span></p>
-
-    <button onclick="sendManualPwm()">Aplicar</button>
-    <p id="manual_pwm_status"></p>
-</div>
-
 </body>
 </html>
-
