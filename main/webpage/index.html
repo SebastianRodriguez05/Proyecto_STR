@@ -33,8 +33,12 @@
                 <div class="card__content stack">
                     <input type="file" id="selected_file" accept=".bin" onchange="getFileInfo()" hidden />
                     <div class="actions">
-                        <button class="btn ghost" type="button" onclick="document.getElementById('selected_file').click();">Select File</button>
-                        <button class="btn primary" type="button" onclick="updateFirmware()">Update Firmware</button>
+                        <button class="btn ghost" type="button" onclick="document.getElementById('selected_file').click();">
+                            Select File
+                        </button>
+                        <button class="btn primary" type="button" onclick="updateFirmware()">
+                            Update Firmware
+                        </button>
                     </div>
                     <div class="status" id="file_info"></div>
                     <div class="status highlight" id="ota_update_status"></div>
@@ -69,21 +73,7 @@
                 </div>
             </section>
 
-            <!-- Temperatura -->
-            <section class="card" id="DHT22Sensor">
-                <div class="card__header">
-                    <p class="eyebrow">Sensores</p>
-                    <h2>Temperature Reading</h2>
-                </div>
-                <div class="card__content">
-                    <div class="metric">
-                        <span class="metric__label">Temperature</span>
-                        <span class="metric__value" id="temperature_reading">--</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 🔥 NUEVA TARJETA: Modo Manual -->
+            <!-- Modo Manual -->
             <section class="card" id="ManualMode">
                 <div class="card__header">
                     <p class="eyebrow">Modo Manual</p>
@@ -135,7 +125,7 @@
                 </div>
             </section>
 
-            <!-- Programación -->
+            <!-- Programación de registros -->
             <section class="card" id="Insert_mem">
                 <div class="card__header">
                     <p class="eyebrow">Programacion</p>
@@ -185,6 +175,33 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Estado del sistema -->
+            <section class="card" id="SystemStatus">
+                <div class="card__header">
+                    <p class="eyebrow">Estado</p>
+                    <h2>Estado del sistema</h2>
+                </div>
+                <div class="card__content reg-list">
+                    <div class="reg-row">
+                        <span>Temperatura</span>
+                        <span id="status_temp" class="reg-value">--</span>
+                    </div>
+                    <div class="reg-row">
+                        <span>PIR</span>
+                        <span id="status_pir" class="reg-value">--</span>
+                    </div>
+                    <div class="reg-row">
+                        <span>Modo actual</span>
+                        <span id="status_mode" class="reg-value">--</span>
+                    </div>
+                    <div class="reg-row">
+                        <span>PWM actual</span>
+                        <span id="status_pwm" class="reg-value">--</span>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 </body>
