@@ -22,6 +22,9 @@ $(document).ready(function () {
     // Cargar configuración del modo manual (PWM guardado en NVS)
     loadManualConfig();
 
+    // Cargar configuración del modo automático (tmin / tmax desde NVS)
+    loadAutoConfig();
+
     // Evento del slider de modo manual
     $("#manual_pwm").on("input change", function () {
         onManualSliderChange(this);
@@ -107,14 +110,6 @@ function otaRebootTimer() {
 
 /* ============================================================
  *  BLOQUE 2: Estado general del sistema (/status.json)
- *  Esperamos algo como:
- *  {
- *     "temp": 28.5,
- *     "pir": 0/1,
- *     "mode": 0/1/2,
- *     "pwm": 63
- *  }
- *  Se muestra en la tarjeta "Estado del sistema"
  * ============================================================
  */
 
@@ -432,6 +427,40 @@ function sendManualPwm() {
     });
 }
 
+/* ============================================================
+ *  MODO AUTOMÁTICO — T_min / T_max
+ * ============================================================
+ */
+
+function loadAutoConfig() {
+    $.getJSON("/auto_config.json", function (data) {
+        if (typeof data.tmin !== "undefined") {
+            $("#auto_tmin").val(data.tmin);
+        }
+        if (typeof data.tmax !== "undefined") {
+            $("#auto_tmax").val(data.tmax);
+        }
+    });
+}
+
+function saveAutoConfig() {
+    let tmin = parseInt($("#auto_tmin").val());
+    let tmax = parseInt($("#auto_tmax").val());
+
+    $.ajax({
+        url: "/set_auto_config.json",
+        method: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({ tmin: tmin, tmax: tmax }),
+        success: function () {
+            $("#auto_config_status").text("Configuración guardada y modo automático activado.");
+            alert("Guardado");
+        },
+        error: function () {
+            $("#auto_config_status").text("Error al guardar configuración.");
+        }
+    });
+}
 
 
 

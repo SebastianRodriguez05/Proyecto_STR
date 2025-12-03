@@ -105,6 +105,52 @@
                 </div>
             </section>
 
+            <!-- Modo Automático -->
+            <section class="card" id="AutoMode">
+                <div class="card__header">
+                    <p class="eyebrow">Modo Automático</p>
+                    <h2>Control por temperatura</h2>
+                </div>
+                <div class="card__content stack">
+                    <p class="subtitle">
+                        Define el rango de temperatura para que el ventilador se controle automáticamente.
+                    </p>
+
+                    <div class="double">
+                        <label class="field">
+                            <span>T<sub>min</sub> (&deg;C)</span>
+                            <input
+                                id="auto_tmin"
+                                type="number"
+                                inputmode="decimal"
+                                step="0.5"
+                                value="20"
+                            >
+                        </label>
+                        <label class="field">
+                            <span>T<sub>max</sub> (&deg;C)</span>
+                            <input
+                                id="auto_tmax"
+                                type="number"
+                                inputmode="decimal"
+                                step="0.5"
+                                value="30"
+                            >
+                        </label>
+                    </div>
+
+                    <p class="status">
+                        El ventilador se ajustará automáticamente según la temperatura medida por el NTC.
+                    </p>
+
+                    <div class="actions">
+                        <button class="btn primary" type="button" onclick="saveAutoConfig()">Guardar</button>
+                    </div>
+
+                    <div class="status highlight" id="auto_config_status"></div>
+                </div>
+            </section>
+
             <!-- Registros leídos -->
             <section class="card" id="Configreading">
                 <div class="card__header">

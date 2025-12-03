@@ -72,6 +72,8 @@ static esp_err_t http_server_app_js_handler(httpd_req_t *req);
 static esp_err_t http_server_favicon_ico_handler(httpd_req_t *req);
 
 static esp_err_t http_server_get_manual_config_handler(httpd_req_t *req);
+static esp_err_t http_server_get_auto_config_handler(httpd_req_t *req);
+static esp_err_t http_server_set_auto_config_handler(httpd_req_t *req);
 static esp_err_t http_server_manual_pwm_handler(httpd_req_t *req);
 static esp_err_t http_server_status_json_handler(httpd_req_t *req);
 
@@ -870,6 +872,24 @@ static httpd_handle_t http_server_configure(void)
 		};
 		httpd_register_uri_handler(http_server_handle, &manual_pwm_uri);
 
+		// Modo automático: leer configuración
+		httpd_uri_t auto_get = {
+			.uri      = "/auto_config.json",
+			.method   = HTTP_GET,
+			.handler  = http_server_get_auto_config_handler,
+			.user_ctx = NULL
+		};
+		httpd_register_uri_handler(http_server_handle, &auto_get);
+
+		// Modo automático: configurar tmin/tmax
+		httpd_uri_t auto_set = {
+			.uri      = "/set_auto_config.json",
+			.method   = HTTP_POST,
+			.handler  = http_server_set_auto_config_handler,
+			.user_ctx = NULL
+		};
+		httpd_register_uri_handler(http_server_handle, &auto_set);
+
 		// Lectura rápida de temperatura
 		httpd_uri_t dht_sensor_json = {
 			.uri      = "/dhtSensor.json",
@@ -1013,7 +1033,7 @@ static httpd_handle_t http_server_configure(void)
 }
 
 /*======================================================================
- *  MODO MANUAL (PWM)
+ *  MODO MANUAL / AUTOMÁTICO (PWM y CONFIG)
  *====================================================================*/
 
 static esp_err_t http_server_get_manual_config_handler(httpd_req_t *req)
@@ -1028,6 +1048,57 @@ static esp_err_t http_server_get_manual_config_handler(httpd_req_t *req)
 	httpd_resp_set_type(req, "application/json");
 	httpd_resp_send(req, json, strlen(json));
 	return ESP_OK;
+}
+
+static esp_err_t http_server_get_auto_config_handler(httpd_req_t *req)
+{
+    int tmin = config_storage_get_auto_tmin();
+    int tmax = config_storage_get_auto_tmax();
+    uint8_t mode = config_storage_get_mode();
+
+    char json[80];
+    snprintf(json, sizeof(json),
+             "{\"tmin\":%d,\"tmax\":%d,\"mode\":%u}",
+             tmin, tmax, mode);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
+
+static esp_err_t http_server_set_auto_config_handler(httpd_req_t *req)
+{
+    char buf[128];
+    int len = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (len <= 0) return ESP_FAIL;
+    buf[len] = '\0';
+
+    cJSON *root = cJSON_Parse(buf);
+    if (!root) return ESP_FAIL;
+
+    cJSON *j_tmin = cJSON_GetObjectItem(root, "tmin");
+    cJSON *j_tmax = cJSON_GetObjectItem(root, "tmax");
+
+    if (!cJSON_IsNumber(j_tmin) || !cJSON_IsNumber(j_tmax)) {
+        cJSON_Delete(root);
+        return ESP_FAIL;
+    }
+
+    int tmin = j_tmin->valueint;
+    int tmax = j_tmax->valueint;
+
+    // Guardar en flash
+    config_storage_save_auto_tmin(tmin);
+    config_storage_save_auto_tmax(tmax);
+
+    // Cambiar modo
+    config_storage_save_mode(1);   // 1 = automático
+
+    cJSON_Delete(root);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    return ESP_OK;
 }
 
 static esp_err_t http_server_manual_pwm_handler(httpd_req_t *req)
