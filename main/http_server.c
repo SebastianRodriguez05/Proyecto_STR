@@ -2,7 +2,7 @@
  * http_server.c
  *
  *  Created on: Oct 20, 2021
- *      Author: kjagu
+ *      Author: kjagu (modificado para modo manual / automático / programado)
  */
 
 #include "esp_http_server.h"
@@ -59,23 +59,32 @@ void http_server_fw_update_reset_callback(void *arg);
 static esp_err_t http_server_get_dht_sensor_readings_json_handler(httpd_req_t *req);
 static esp_err_t http_server_toogle_led_handler(httpd_req_t *req);
 static esp_err_t http_server_update_temperature_range_handler(httpd_req_t *req);
-static esp_err_t http_server_read_register_handler(httpd_req_t *req);
-static esp_err_t http_server_register_change_handler(httpd_req_t *req);
-static esp_err_t http_server_register_erase_handler(httpd_req_t *req);
+
+// Resumen de registros programados (para la tabla "Tiempos configurados")
+static esp_err_t http_server_read_regs_summary_handler(httpd_req_t *req);
+
+// WIFI
 static esp_err_t http_server_wifi_connect_json_handler(httpd_req_t *req);
 static esp_err_t http_server_wifi_connect_status_json_handler(httpd_req_t *req);
 
+// Archivos estáticos
 static esp_err_t http_server_jquery_handler(httpd_req_t *req);
 static esp_err_t http_server_index_html_handler(httpd_req_t *req);
 static esp_err_t http_server_app_css_handler(httpd_req_t *req);
 static esp_err_t http_server_app_js_handler(httpd_req_t *req);
 static esp_err_t http_server_favicon_ico_handler(httpd_req_t *req);
 
+// Modo manual / automático
 static esp_err_t http_server_get_manual_config_handler(httpd_req_t *req);
 static esp_err_t http_server_get_auto_config_handler(httpd_req_t *req);
 static esp_err_t http_server_set_auto_config_handler(httpd_req_t *req);
 static esp_err_t http_server_manual_pwm_handler(httpd_req_t *req);
 static esp_err_t http_server_status_json_handler(httpd_req_t *req);
+
+// Modo programado (slots)
+static esp_err_t http_server_program_get_handler(httpd_req_t *req);    // /get_program.json
+static esp_err_t http_server_program_set_handler(httpd_req_t *req);    // /set_program.json
+static esp_err_t http_server_program_erase_handler(httpd_req_t *req);  // /erase_program.json
 
 /**
  * ESP32 timer configuration passed to esp_timer_create.
@@ -160,78 +169,7 @@ static esp_err_t http_server_toogle_led_handler(httpd_req_t *req)
 static esp_err_t http_server_update_temperature_range_handler(httpd_req_t *req)
 {
 	ESP_LOGI(TAG, "/update_temp_range.json requested");
-	return ESP_OK;
-}
-
-static esp_err_t http_server_read_register_handler(httpd_req_t *req)
-{
-	ESP_LOGI(TAG, "/readreg.json requested");
-
-	char register_information_read_1[12];
-	register_information_read_1[11] = 0x00;
-	if (read_reg_data(&register_information_read_1[0], 1) != ESP_OK) {
-		memset(&register_information_read_1[0], '9', 6);
-	}
-
-	char register_information_read_2[12];
-	register_information_read_2[11] = 0x00;
-	if (read_reg_data(&register_information_read_2[0], 2) != ESP_OK) {
-		memset(&register_information_read_2[0], '9', 6);
-	}
-
-	char register_information_read_3[12];
-	register_information_read_3[11] = 0x00;
-	if (read_reg_data(&register_information_read_3[0], 3) != ESP_OK) {
-		memset(&register_information_read_3[0], '9', 6);
-	}
-
-	char register_information_read_4[12];
-	register_information_read_4[11] = 0x00;
-	if (read_reg_data(&register_information_read_4[0], 4) != ESP_OK) {
-		memset(&register_information_read_4[0], '9', 6);
-	}
-
-	char register_information_read_5[12];
-	register_information_read_5[11] = 0x00;
-	if (read_reg_data(&register_information_read_5[0], 5) != ESP_OK) {
-		memset(&register_information_read_5[0], '9', 6);
-	}
-
-	char register_information_read_6[12];
-	register_information_read_6[11] = 0x00;
-	if (read_reg_data(&register_information_read_6[0], 6) != ESP_OK) {
-		memset(&register_information_read_6[0], '9', 6);
-	}
-
-	char register_information_read_7[12];
-	register_information_read_7[11] = 0x00;
-	if (read_reg_data(&register_information_read_7[0], 7) != ESP_OK) {
-		memset(&register_information_read_7[0], '9', 6);
-	}
-
-	char register_information_read_8[12];
-	register_information_read_8[11] = 0x00;
-	if (read_reg_data(&register_information_read_8[0], 8) != ESP_OK) {
-		memset(&register_information_read_8[0], '9', 6);
-	}
-
-	char register_information_read_9[12];
-	register_information_read_9[11] = 0x00;
-	if (read_reg_data(&register_information_read_9[0], 9) != ESP_OK) {
-		memset(&register_information_read_9[0], '9', 6);
-	}
-
-	char register_information_read_10[12];
-	register_information_read_10[11] = 0x00;
-	if (read_reg_data(&register_information_read_10[0], 10) != ESP_OK) {
-		memset(&register_information_read_10[0], '9', 6);
-	}
-
-	// Aquí podrías construir el JSON para enviarlo si lo necesitas.
-	// De momento solo devolvemos OK.
-	httpd_resp_set_hdr(req, "Connection", "close");
-	httpd_resp_send(req, NULL, 0);
-
+	// Handler vacío (legacy).
 	return ESP_OK;
 }
 
@@ -534,188 +472,210 @@ esp_err_t http_server_OTA_status_handler(httpd_req_t *req)
 }
 
 /*======================================================================
- *  REGISTROS PROGRAMADOS
+ *  MODO PROGRAMADO – HANDLERS
  *====================================================================*/
 
-static esp_err_t http_server_register_change_handler(httpd_req_t *req)
+// GET /get_program.json?id=1
+static esp_err_t http_server_program_get_handler(httpd_req_t *req)
 {
-	size_t header_len;
-	char *header_value;
-	char *hour_str = NULL;
-	char *reg_str = NULL;
-	char *min_str = NULL;
-	int content_length;
+	char param[8];
+	int id = 0;
 
-	ESP_LOGI(TAG, "/regchange.json requested");
-
-	header_len = httpd_req_get_hdr_value_len(req, "Content-Length");
-	if (header_len <= 0) {
-		ESP_LOGI(TAG, "Content-Length header is missing or invalid");
-		return ESP_FAIL;
-	}
-
-	header_value = (char *)malloc(header_len + 1);
-	if (httpd_req_get_hdr_value_str(req, "Content-Length", header_value, header_len + 1) != ESP_OK) {
-		free(header_value);
-		ESP_LOGI(TAG, "Failed to get Content-Length header value");
-		return ESP_FAIL;
-	}
-
-	content_length = atoi(header_value);
-	free(header_value);
-
-	if (content_length <= 0) {
-		ESP_LOGI(TAG, "Invalid Content-Length value");
-		return ESP_FAIL;
-	}
-
-	char *data_buffer = (char *)malloc(content_length + 1);
-
-	if (httpd_req_recv(req, data_buffer, content_length) <= 0) {
-		free(data_buffer);
-		ESP_LOGI(TAG, "Failed to receive request body");
-		return ESP_FAIL;
-	}
-
-	data_buffer[content_length] = '\0';
-
-	cJSON *root = cJSON_Parse(data_buffer);
-	free(data_buffer);
-
-	if (root == NULL) {
-		ESP_LOGI(TAG, "Invalid JSON data");
-		return ESP_FAIL;
-	}
-
-	cJSON *reg_number_json   = cJSON_GetObjectItem(root, "selectedNumber");
-	cJSON *hour_json         = cJSON_GetObjectItem(root, "hours");
-	cJSON *min_json          = cJSON_GetObjectItem(root, "minutes");
-	cJSON *selectedDays_json = cJSON_GetObjectItem(root, "selectedDays");
-
-	if (reg_number_json == NULL || hour_json == NULL || min_json == NULL ||
-	    selectedDays_json == NULL || !cJSON_IsString(reg_number_json) ||
-	    !cJSON_IsString(hour_json) || !cJSON_IsString(min_json) ||
-	    !cJSON_IsArray(selectedDays_json))
-	{
-		cJSON_Delete(root);
-		ESP_LOGI(TAG, "Missing or invalid JSON data fields");
-		return ESP_FAIL;
-	}
-
-	reg_str  = strdup(reg_number_json->valuestring);
-	hour_str = strdup(hour_json->valuestring);
-	min_str  = strdup(min_json->valuestring);
-
-	ESP_LOGI(TAG, "Received reg: %s",  reg_str);
-	ESP_LOGI(TAG, "Received hour: %s", hour_str);
-	ESP_LOGI(TAG, "Received min: %s",  min_str);
-
-	char str_to_save[12];
-	memset(str_to_save, 0x00, sizeof(str_to_save));
-
-	strcat(str_to_save, hour_str);
-	strcat(str_to_save, min_str);
-
-	cJSON *day_item;
-	cJSON_ArrayForEach(day_item, selectedDays_json) {
-		if (cJSON_IsString(day_item)) {
-			const char *day_str = day_item->valuestring;
-			strcat(str_to_save, day_str);
-			printf("Selected Day: %s\n", day_str);
+	if (httpd_req_get_url_query_len(req) > 0) {
+		char buf[64];
+		if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) == ESP_OK) {
+			if (httpd_query_key_value(buf, "id", param, sizeof(param)) == ESP_OK) {
+				id = atoi(param);
+			}
 		}
 	}
 
-	printf("%s\n", str_to_save);
-	save_reg_data(atoi(reg_str), &str_to_save[0]);
-	update_register(atoi(reg_str));
+	if (id < 1 || id > PROGRAM_SLOTS) {
+		httpd_resp_set_status(req, "400 Bad Request");
+		httpd_resp_sendstr(req, "Invalid id");
+		return ESP_FAIL;
+	}
 
-	free(reg_str);
-	free(hour_str);
-	free(min_str);
+	program_slot_t slot;
+	program_get_slot(id, &slot);
+
+	cJSON *root = cJSON_CreateObject();
+	if (!root) {
+		return ESP_FAIL;
+	}
+
+	cJSON_AddNumberToObject(root, "id",      id);
+	cJSON_AddNumberToObject(root, "active",  slot.active ? 1 : 0);
+	cJSON_AddNumberToObject(root, "h_start", slot.h_start);
+	cJSON_AddNumberToObject(root, "m_start", slot.m_start);
+	cJSON_AddNumberToObject(root, "h_end",   slot.h_end);
+	cJSON_AddNumberToObject(root, "m_end",   slot.m_end);
+	cJSON_AddNumberToObject(root, "t0",      slot.t0);
+	cJSON_AddNumberToObject(root, "t100",    slot.t100);
+
+	char *json_str = cJSON_PrintUnformatted(root);
 	cJSON_Delete(root);
 
-	httpd_resp_set_hdr(req, "Connection", "close");
-	httpd_resp_send(req, NULL, 0);
-
+	httpd_resp_set_type(req, "application/json");
+	httpd_resp_sendstr(req, json_str);
+	free(json_str);
 	return ESP_OK;
 }
 
-static esp_err_t http_server_register_erase_handler(httpd_req_t *req)
+// POST /set_program.json
+// body JSON: { "id":1, "active":1, "h_start":20, "m_start":0, "h_end":21, "m_end":0, "t0":24, "t100":28 }
+static esp_err_t http_server_program_set_handler(httpd_req_t *req)
 {
-	size_t header_len;
-	char *header_value;
-	char *reg_str = NULL;
-	int content_length;
+	char buf[256];
+	int len = httpd_req_recv(req, buf, sizeof(buf) - 1);
+	if (len <= 0) return ESP_FAIL;
+	buf[len] = '\0';
 
-	ESP_LOGI(TAG, "/regerase.json requested");
+	cJSON *root = cJSON_Parse(buf);
+	if (!root) return ESP_FAIL;
 
-	header_len = httpd_req_get_hdr_value_len(req, "Content-Length");
-	if (header_len <= 0) {
-		ESP_LOGI(TAG, "Content-Length header is missing or invalid");
-		return ESP_FAIL;
-	}
+	cJSON *j_id      = cJSON_GetObjectItem(root, "id");
+	cJSON *j_active  = cJSON_GetObjectItem(root, "active");
+	cJSON *j_hs      = cJSON_GetObjectItem(root, "h_start");
+	cJSON *j_ms      = cJSON_GetObjectItem(root, "m_start");
+	cJSON *j_he      = cJSON_GetObjectItem(root, "h_end");
+	cJSON *j_me      = cJSON_GetObjectItem(root, "m_end");
+	cJSON *j_t0      = cJSON_GetObjectItem(root, "t0");
+	cJSON *j_t100    = cJSON_GetObjectItem(root, "t100");
 
-	header_value = (char *)malloc(header_len + 1);
-	if (httpd_req_get_hdr_value_str(req, "Content-Length", header_value, header_len + 1) != ESP_OK) {
-		free(header_value);
-		ESP_LOGI(TAG, "Failed to get Content-Length header value");
-		return ESP_FAIL;
-	}
+	if (!cJSON_IsNumber(j_id)     ||
+	    !cJSON_IsNumber(j_active) ||
+	    !cJSON_IsNumber(j_hs)     ||
+	    !cJSON_IsNumber(j_ms)     ||
+	    !cJSON_IsNumber(j_he)     ||
+	    !cJSON_IsNumber(j_me)     ||
+	    !cJSON_IsNumber(j_t0)     ||
+	    !cJSON_IsNumber(j_t100)) {
 
-	content_length = atoi(header_value);
-	free(header_value);
-
-	if (content_length <= 0) {
-		ESP_LOGI(TAG, "Invalid Content-Length value");
-		return ESP_FAIL;
-	}
-
-	char *data_buffer = (char *)malloc(content_length + 1);
-
-	if (httpd_req_recv(req, data_buffer, content_length) <= 0) {
-		free(data_buffer);
-		ESP_LOGI(TAG, "Failed to receive request body");
-		return ESP_FAIL;
-	}
-
-	data_buffer[content_length] = '\0';
-
-	cJSON *root = cJSON_Parse(data_buffer);
-	free(data_buffer);
-
-	if (root == NULL) {
-		ESP_LOGI(TAG, "Invalid JSON data");
-		return ESP_FAIL;
-	}
-
-	cJSON *reg_number_json = cJSON_GetObjectItem(root, "selectedNumber");
-
-	if (reg_number_json == NULL || !cJSON_IsString(reg_number_json)) {
 		cJSON_Delete(root);
-		ESP_LOGI(TAG, "Missing or invalid JSON data fields");
+		httpd_resp_set_status(req, "400 Bad Request");
+		httpd_resp_sendstr(req, "Invalid JSON fields");
 		return ESP_FAIL;
 	}
 
-	reg_str = strdup(reg_number_json->valuestring);
-	ESP_LOGI(TAG, "received reg: %s", reg_str);
+	int id = j_id->valueint;
+	if (id < 1 || id > PROGRAM_SLOTS) {
+		cJSON_Delete(root);
+		httpd_resp_set_status(req, "400 Bad Request");
+		httpd_resp_sendstr(req, "Invalid id");
+		return ESP_FAIL;
+	}
 
-	char str_to_save[12];
-	memset(str_to_save, 0x00, sizeof(str_to_save));
+	program_slot_t slot;
+	slot.active  = (uint8_t)(j_active->valueint ? 1 : 0);
+	slot.h_start = (uint8_t)j_hs->valueint;
+	slot.m_start = (uint8_t)j_ms->valueint;
+	slot.h_end   = (uint8_t)j_he->valueint;
+	slot.m_end   = (uint8_t)j_me->valueint;
+	slot.t0      = (int16_t)j_t0->valueint;
+	slot.t100    = (int16_t)j_t100->valueint;
 
-	strcat(str_to_save, "99");
-	strcat(str_to_save, "99");
-	strcat(str_to_save, "0000000");
+	ESP_LOGI(TAG,
+	         "Saving program id=%d: active=%d %02d:%02d-%02d:%02d t0=%d t100=%d",
+	         id, slot.active,
+	         slot.h_start, slot.m_start,
+	         slot.h_end,   slot.m_end,
+	         slot.t0, slot.t100);
 
-	printf("%s\n", str_to_save);
-	save_reg_data(atoi(reg_str), &str_to_save[0]);
-	update_register(atoi(reg_str));
+	program_set_slot(id, &slot);
 
-	free(reg_str);
+	// opcional: al guardar un registro, ponemos modo programado
+	config_storage_save_mode(2); // 2 = programado
+
 	cJSON_Delete(root);
 
-	httpd_resp_set_hdr(req, "Connection", "close");
-	httpd_resp_send(req, NULL, 0);
+	httpd_resp_set_type(req, "application/json");
+	httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+	return ESP_OK;
+}
 
+// POST /erase_program.json
+// body JSON: { "id":1 }
+static esp_err_t http_server_program_erase_handler(httpd_req_t *req)
+{
+	char buf[64];
+	int len = httpd_req_recv(req, buf, sizeof(buf) - 1);
+	if (len <= 0) return ESP_FAIL;
+	buf[len] = '\0';
+
+	cJSON *root = cJSON_Parse(buf);
+	if (!root) return ESP_FAIL;
+
+	cJSON *j_id = cJSON_GetObjectItem(root, "id");
+	if (!cJSON_IsNumber(j_id)) {
+		cJSON_Delete(root);
+		httpd_resp_set_status(req, "400 Bad Request");
+		httpd_resp_sendstr(req, "Invalid id");
+		return ESP_FAIL;
+	}
+
+	int id = j_id->valueint;
+	if (id < 1 || id > PROGRAM_SLOTS) {
+		cJSON_Delete(root);
+		httpd_resp_set_status(req, "400 Bad Request");
+		httpd_resp_sendstr(req, "Invalid id");
+		return ESP_FAIL;
+	}
+
+	ESP_LOGI(TAG, "Erasing program id=%d", id);
+	program_erase_slot(id);
+
+	cJSON_Delete(root);
+
+	httpd_resp_set_type(req, "application/json");
+	httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+	return ESP_OK;
+}
+
+/*======================================================================
+ *  RESUMEN DE REGISTROS – /read_regs.json
+ *====================================================================*/
+
+// Devuelve algo como:
+// { "reg1":"20:00-21:00", "reg2":"--", ..., "reg10":"--" }
+static esp_err_t http_server_read_regs_summary_handler(httpd_req_t *req)
+{
+	cJSON *root = cJSON_CreateObject();
+	if (!root) return ESP_FAIL;
+
+	// Primero los que están realmente soportados en NVS (1..PROGRAM_SLOTS)
+	for (int i = 1; i <= PROGRAM_SLOTS; ++i) {
+		program_slot_t slot;
+		program_get_slot(i, &slot);
+
+		char key[8];
+		snprintf(key, sizeof(key), "reg%d", i);
+
+		if (!slot.active) {
+			cJSON_AddStringToObject(root, key, "--");
+		} else {
+			char value[32];
+			snprintf(value, sizeof(value),
+			         "%02d:%02d-%02d:%02d",
+			         slot.h_start, slot.m_start,
+			         slot.h_end,   slot.m_end);
+			cJSON_AddStringToObject(root, key, value);
+		}
+	}
+
+	// Del PROGRAM_SLOTS+1 hasta 10 devolvemos siempre "--" para llenar la tabla
+	for (int i = PROGRAM_SLOTS + 1; i <= 10; ++i) {
+		char key[8];
+		snprintf(key, sizeof(key), "reg%d", i);
+		cJSON_AddStringToObject(root, key, "--");
+	}
+
+	char *json_str = cJSON_PrintUnformatted(root);
+	cJSON_Delete(root);
+
+	httpd_resp_set_type(req, "application/json");
+	httpd_resp_sendstr(req, json_str);
+	free(json_str);
 	return ESP_OK;
 }
 
@@ -841,7 +801,7 @@ static httpd_handle_t http_server_configure(void)
 	config.core_id       = HTTP_SERVER_TASK_CORE_ID;
 	config.task_priority = HTTP_SERVER_TASK_PRIORITY;
 	config.stack_size    = HTTP_SERVER_TASK_STACK_SIZE;
-	config.max_uri_handlers   = 20;
+	config.max_uri_handlers   = 24;
 	config.recv_wait_timeout  = 10;
 	config.send_wait_timeout  = 10;
 
@@ -908,6 +868,40 @@ static httpd_handle_t http_server_configure(void)
 		};
 		httpd_register_uri_handler(http_server_handle, &status_json);
 
+		// Resumen de registros programados
+		httpd_uri_t read_regs_uri = {
+			.uri      = "/read_regs.json",
+			.method   = HTTP_GET,
+			.handler  = http_server_read_regs_summary_handler,
+			.user_ctx = NULL
+		};
+		httpd_register_uri_handler(http_server_handle, &read_regs_uri);
+
+		// Modo programado: get / set / erase
+		httpd_uri_t program_get_uri = {
+			.uri      = "/get_program.json",
+			.method   = HTTP_GET,
+			.handler  = http_server_program_get_handler,
+			.user_ctx = NULL
+		};
+		httpd_register_uri_handler(http_server_handle, &program_get_uri);
+
+		httpd_uri_t program_set_uri = {
+			.uri      = "/set_program.json",
+			.method   = HTTP_POST,
+			.handler  = http_server_program_set_handler,
+			.user_ctx = NULL
+		};
+		httpd_register_uri_handler(http_server_handle, &program_set_uri);
+
+		httpd_uri_t program_erase_uri = {
+			.uri      = "/erase_program.json",
+			.method   = HTTP_POST,
+			.handler  = http_server_program_erase_handler,
+			.user_ctx = NULL
+		};
+		httpd_register_uri_handler(http_server_handle, &program_erase_uri);
+
 		// Archivos estáticos
 		httpd_uri_t jquery_js = {
 			.uri      = "/jquery-3.3.1.min.js",
@@ -958,7 +952,7 @@ static httpd_handle_t http_server_configure(void)
 		};
 		httpd_register_uri_handler(http_server_handle, &toogle_led_uri);
 
-		// Rango temperatura
+		// Rango temperatura (legacy)
 		httpd_uri_t update_temperature_range = {
 			.uri      = "/update_temperature_range.json",
 			.method   = HTTP_POST,
@@ -1000,31 +994,6 @@ static httpd_handle_t http_server_configure(void)
 			.user_ctx = NULL
 		};
 		httpd_register_uri_handler(http_server_handle, &OTA_status);
-
-		// Registros programados
-		httpd_uri_t register_change = {
-			.uri      = "/regchange.json",
-			.method   = HTTP_POST,
-			.handler  = http_server_register_change_handler,
-			.user_ctx = NULL
-		};
-		httpd_register_uri_handler(http_server_handle, &register_change);
-
-		httpd_uri_t register_erase = {
-			.uri      = "/regerase.json",
-			.method   = HTTP_POST,
-			.handler  = http_server_register_erase_handler,
-			.user_ctx = NULL
-		};
-		httpd_register_uri_handler(http_server_handle, &register_erase);
-
-		httpd_uri_t read_range_uri = {
-			.uri      = "/readreg.json",
-			.method   = HTTP_POST,
-			.handler  = http_server_read_register_handler,
-			.user_ctx = NULL
-		};
-		httpd_register_uri_handler(http_server_handle, &read_range_uri);
 
 		return http_server_handle;
 	}

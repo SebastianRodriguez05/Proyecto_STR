@@ -9,246 +9,228 @@
     <script async src="app.js"></script>
     <title>ESP32 Control Panel</title>
 </head>
+
 <body>
-    <div class="page">
-        <header class="hero">
-            <div class="hero__text">
-                <p class="eyebrow">ESP32</p>
-                <h1>Control Center</h1>
-                <p class="subtitle">Gestiona tu dispositivo, credenciales y horarios en un panel limpio inspirado en iOS.</p>
+<div class="page">
+
+    <!-- ===================== HERO ===================== -->
+    <header class="hero">
+        <div class="hero__text">
+            <p class="eyebrow">ESP32</p>
+            <h1>Control Center</h1>
+            <p class="subtitle">Gestiona tu dispositivo, credenciales y horarios en un panel limpio inspirado en iOS.</p>
+        </div>
+
+        <div class="hero__badge">
+            <div class="badge__label">Latest Firmware</div>
+            <div class="badge__value" id="latest_firmware">--</div>
+        </div>
+    </header>
+
+
+    <!-- ===================== MAIN GRID ===================== -->
+    <main class="grid">
+
+
+        <!-- ========== OTA UPDATE ========== -->
+        <section class="card">
+            <div class="card__header">
+                <p class="eyebrow">OTA</p>
+                <h2>ESP32 Firmware Update</h2>
             </div>
-            <div class="hero__badge">
-                <div class="badge__label" id="latest_firmware_label">Latest Firmware</div>
-                <div class="badge__value" id="latest_firmware">--</div>
+
+            <div class="card__content stack">
+                <input type="file" id="selected_file" accept=".bin" onchange="getFileInfo()" hidden />
+
+                <div class="actions">
+                    <button class="btn ghost" onclick="document.getElementById('selected_file').click();">
+                        Select File
+                    </button>
+
+                    <button class="btn primary" onclick="updateFirmware()">
+                        Update Firmware
+                    </button>
+                </div>
+
+                <div class="status" id="file_info"></div>
+                <div class="status highlight" id="ota_update_status"></div>
             </div>
-        </header>
+        </section>
 
-        <main class="grid">
-            <!-- OTA -->
-            <section class="card" id="OTA">
-                <div class="card__header">
-                    <p class="eyebrow">OTA</p>
-                    <h2>ESP32 Firmware Update</h2>
-                </div>
-                <div class="card__content stack">
-                    <input type="file" id="selected_file" accept=".bin" onchange="getFileInfo()" hidden />
-                    <div class="actions">
-                        <button class="btn ghost" type="button" onclick="document.getElementById('selected_file').click();">
-                            Select File
-                        </button>
-                        <button class="btn primary" type="button" onclick="updateFirmware()">
-                            Update Firmware
-                        </button>
-                    </div>
-                    <div class="status" id="file_info"></div>
-                    <div class="status highlight" id="ota_update_status"></div>
-                </div>
-            </section>
 
-            <!-- WiFi -->
-            <section class="card" id="WiFiConnect">
-                <div class="card__header">
-                    <p class="eyebrow">Conectividad</p>
-                    <h2>ESP32 WiFi Connect</h2>
+
+        <!-- ========== WIFI SETTINGS ========== -->
+        <section class="card">
+            <div class="card__header">
+                <p class="eyebrow">Conectividad</p>
+                <h2>ESP32 WiFi Connect</h2>
+            </div>
+
+            <div class="card__content stack">
+                <label class="field">
+                    <span>SSID</span>
+                    <input id="connect_ssid" type="text" maxlength="32" placeholder="Red WiFi">
+                </label>
+
+                <label class="field">
+                    <span>Password</span>
+                    <input id="connect_pass" type="password" maxlength="64" placeholder="Ingresa la clave">
+                </label>
+
+                <label class="checkbox">
+                    <input type="checkbox" onclick="showPassword()">
+                    <span>Mostrar password</span>
+                </label>
+
+                <div class="actions">
+                    <button class="btn primary" onclick="checkCredentials()">Connect</button>
+                    <button class="btn secondary" onclick="toogle_led()">Toggle LED</button>
                 </div>
-                <div class="card__content stack">
+
+                <div class="status error" id="wifi_connect_credentials_errors"></div>
+                <div class="status" id="wifi_connect_status"></div>
+            </div>
+        </section>
+
+
+
+        <!-- ========== MANUAL MODE ========== -->
+        <section class="card">
+            <div class="card__header">
+                <p class="eyebrow">Modo Manual</p>
+                <h2>Control del ventilador</h2>
+            </div>
+
+            <div class="card__content stack">
+                <label class="field">
+                    <span>Velocidad del ventilador (PWM %)</span>
+                    <input type="range" id="manual_pwm" min="0" max="100" value="0"
+                           oninput="onManualSliderChange(this)">
+                </label>
+
+                <p class="status">
+                    Valor seleccionado: <span id="manualPwmLabel">0%</span>
+                </p>
+
+                <div class="actions">
+                    <button class="btn primary" onclick="sendManualPwm()">Aplicar</button>
+                </div>
+
+                <div class="status highlight" id="manual_pwm_status"></div>
+            </div>
+        </section>
+
+
+
+        <!-- ========== AUTOMATIC MODE ========== -->
+        <section class="card">
+            <div class="card__header">
+                <p class="eyebrow">Modo Automático</p>
+                <h2>Control por temperatura</h2>
+            </div>
+
+            <div class="card__content stack">
+                <div class="double">
                     <label class="field">
-                        <span>SSID</span>
-                        <input id="connect_ssid" type="text" maxlength="32" placeholder="Red WiFi">
+                        <span>T<sub>min</sub> (°C)</span>
+                        <input id="auto_tmin" type="number" step="0.5" value="20">
                     </label>
+
                     <label class="field">
-                        <span>Password</span>
-                        <input id="connect_pass" type="password" maxlength="64" placeholder="Ingresa la clave">
+                        <span>T<sub>max</sub> (°C)</span>
+                        <input id="auto_tmax" type="number" step="0.5" value="30">
                     </label>
-                    <label class="checkbox">
-                        <input type="checkbox" onclick="showPassword()">
-                        <span>Mostrar password</span>
+                </div>
+
+                <div class="actions">
+                    <button class="btn primary" onclick="saveAutoConfig()">Guardar</button>
+                </div>
+
+                <div class="status highlight" id="auto_config_status"></div>
+            </div>
+        </section>
+
+
+
+        <!-- ========== PROGRAMACIÓN NUEVA (3 SLOTS) ========== -->
+        <section class="card">
+            <div class="card__header">
+                <p class="eyebrow">Programación</p>
+                <h2>Configurar registro</h2>
+            </div>
+
+            <div class="card__content stack">
+
+                <label class="field">
+                    <span>Selecciona el registro</span>
+                    <select id="prog_id">
+                        <option value="1">Registro 1</option>
+                        <option value="2">Registro 2</option>
+                        <option value="3">Registro 3</option>
+                    </select>
+                </label>
+
+                <label class="checkbox">
+                    <input type="checkbox" id="prog_active">
+                    <span>Registro activo</span>
+                </label>
+
+                <div class="double">
+                    <label class="field"><span>Hora inicio</span>
+                        <input type="number" id="prog_h_start" min="0" max="23" value="20">
                     </label>
-                    <div class="actions">
-                        <button class="btn primary" id="connect_wifi" type="button">Connect</button>
-                        <button class="btn secondary" type="button" onclick="toogle_led()">Toggle LED</button>
-                    </div>
-                    <div class="status error" id="wifi_connect_credentials_errors"></div>
-                    <div class="status" id="wifi_connect_status"></div>
-                </div>
-            </section>
-
-            <!-- Modo Manual -->
-            <section class="card" id="ManualMode">
-                <div class="card__header">
-                    <p class="eyebrow">Modo Manual</p>
-                    <h2>Control del ventilador</h2>
-                </div>
-                <div class="card__content stack">
-                    <label class="field">
-                        <span>Velocidad del ventilador (PWM %)</span>
-                        <input
-                            type="range"
-                            id="manual_pwm"
-                            min="0"
-                            max="100"
-                            value="0"
-                            oninput="onManualSliderChange(this)"
-                        >
+                    <label class="field"><span>Minuto inicio</span>
+                        <input type="number" id="prog_m_start" min="0" max="59" value="0">
                     </label>
-
-                    <p class="status">
-                        Valor seleccionado:
-                        <span id="manualPwmLabel">0%</span>
-                    </p>
-
-                    <div class="actions">
-                        <button class="btn primary" type="button" onclick="sendManualPwm()">Aplicar</button>
-                    </div>
-
-                    <div class="status highlight" id="manual_pwm_status"></div>
                 </div>
-            </section>
 
-            <!-- Modo Automático -->
-            <section class="card" id="AutoMode">
-                <div class="card__header">
-                    <p class="eyebrow">Modo Automático</p>
-                    <h2>Control por temperatura</h2>
-                </div>
-                <div class="card__content stack">
-                    <p class="subtitle">
-                        Define el rango de temperatura para que el ventilador se controle automáticamente.
-                    </p>
-
-                    <div class="double">
-                        <label class="field">
-                            <span>T<sub>min</sub> (&deg;C)</span>
-                            <input
-                                id="auto_tmin"
-                                type="number"
-                                inputmode="decimal"
-                                step="0.5"
-                                value="20"
-                            >
-                        </label>
-                        <label class="field">
-                            <span>T<sub>max</sub> (&deg;C)</span>
-                            <input
-                                id="auto_tmax"
-                                type="number"
-                                inputmode="decimal"
-                                step="0.5"
-                                value="30"
-                            >
-                        </label>
-                    </div>
-
-                    <p class="status">
-                        El ventilador se ajustará automáticamente según la temperatura medida por el NTC.
-                    </p>
-
-                    <div class="actions">
-                        <button class="btn primary" type="button" onclick="saveAutoConfig()">Guardar</button>
-                    </div>
-
-                    <div class="status highlight" id="auto_config_status"></div>
-                </div>
-            </section>
-
-            <!-- Registros leídos -->
-            <section class="card" id="Configreading">
-                <div class="card__header">
-                    <p class="eyebrow">Registros</p>
-                    <h2>Tiempos configurados</h2>
-                </div>
-                <div class="card__content reg-list">
-                    <div class="reg-row"><span>Registro 1</span><span id="reg_1" class="reg-value">--</span></div>
-                    <div class="reg-row"><span>Registro 2</span><span id="reg_2" class="reg-value">--</span></div>
-                    <div class="reg-row"><span>Registro 3</span><span id="reg_3" class="reg-value">--</span></div>
-                    <div class="reg-row"><span>Registro 4</span><span id="reg_4" class="reg-value">--</span></div>
-                    <div class="reg-row"><span>Registro 5</span><span id="reg_5" class="reg-value">--</span></div>
-                    <div class="reg-row"><span>Registro 6</span><span id="reg_6" class="reg-value">--</span></div>
-                    <div class="reg-row"><span>Registro 7</span><span id="reg_7" class="reg-value">--</span></div>
-                    <div class="reg-row"><span>Registro 8</span><span id="reg_8" class="reg-value">--</span></div>
-                    <div class="reg-row"><span>Registro 9</span><span id="reg_9" class="reg-value">--</span></div>
-                    <div class="reg-row"><span>Registro 10</span><span id="reg_10" class="reg-value">--</span></div>
-                </div>
-            </section>
-
-            <!-- Programación de registros -->
-            <section class="card" id="Insert_mem">
-                <div class="card__header">
-                    <p class="eyebrow">Programacion</p>
-                    <h2>Configurar registro</h2>
-                </div>
-                <div class="card__content stack">
-                    <label class="field">
-                        <span>Selecciona el registro</span>
-                        <select id="selectNumber" name="selectNumber">
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
-                            <option value="6">6</option>
-                            <option value="7">7</option>
-                            <option value="8">8</option>
-                            <option value="9">9</option>
-                            <option value="10">10</option>
-                        </select>
+                <div class="double">
+                    <label class="field"><span>Hora fin</span>
+                        <input type="number" id="prog_h_end" min="0" max="23" value="21">
                     </label>
-                    <div class="double">
-                        <label class="field">
-                            <span>Hora</span>
-                            <input type="number" id="hours" name="hours" min="0" max="23" value="12">
-                        </label>
-                        <label class="field">
-                            <span>Minutos</span>
-                            <input type="number" id="minutes" name="minutes" min="0" max="59" value="30">
-                        </label>
-                    </div>
-
-                    <div class="days">
-                        <span class="days__title">Dias de la semana</span>
-                        <label class="checkbox"><input type="checkbox" id="day_mon" name="day_mon" value="Monday" checked><span>Lunes</span></label>
-                        <label class="checkbox"><input type="checkbox" id="day_tue" name="day_tue" value="Tuesday"><span>Martes</span></label>
-                        <label class="checkbox"><input type="checkbox" id="day_wed" name="day_wed" value="Wednesday"><span>Miercoles</span></label>
-                        <label class="checkbox"><input type="checkbox" id="day_thu" name="day_thu" value="Thursday"><span>Jueves</span></label>
-                        <label class="checkbox"><input type="checkbox" id="day_fri" name="day_fri" value="Friday"><span>Viernes</span></label>
-                        <label class="checkbox"><input type="checkbox" id="day_sat" name="day_sat" value="Saturday"><span>Sabado</span></label>
-                        <label class="checkbox"><input type="checkbox" id="day_sun" name="day_sun" value="Sunday"><span>Domingo</span></label>
-                    </div>
-                    <div class="actions">
-                        <button class="btn primary" type="button" onclick="send_register()">Enviar registro</button>
-                        <button class="btn secondary" type="button" onclick="getregValues()">Leer registro</button>
-                        <button class="btn ghost" type="button" onclick="erase_register()">Borrar registro</button>
-                    </div>
+                    <label class="field"><span>Minuto fin</span>
+                        <input type="number" id="prog_m_end" min="0" max="59" value="0">
+                    </label>
                 </div>
-            </section>
 
-            <!-- Estado del sistema -->
-            <section class="card" id="SystemStatus">
-                <div class="card__header">
-                    <p class="eyebrow">Estado</p>
-                    <h2>Estado del sistema</h2>
+                <div class="double">
+                    <label class="field"><span>T 0% PWM (°C)</span>
+                        <input type="number" id="prog_t0" value="24">
+                    </label>
+                    <label class="field"><span>T 100% PWM (°C)</span>
+                        <input type="number" id="prog_t100" value="28">
+                    </label>
                 </div>
-                <div class="card__content reg-list">
-                    <div class="reg-row">
-                        <span>Temperatura</span>
-                        <span id="status_temp" class="reg-value">--</span>
-                    </div>
-                    <div class="reg-row">
-                        <span>PIR</span>
-                        <span id="status_pir" class="reg-value">--</span>
-                    </div>
-                    <div class="reg-row">
-                        <span>Modo actual</span>
-                        <span id="status_mode" class="reg-value">--</span>
-                    </div>
-                    <div class="reg-row">
-                        <span>PWM actual</span>
-                        <span id="status_pwm" class="reg-value">--</span>
-                    </div>
-                </div>
-            </section>
 
-        </main>
-    </div>
+                <div class="actions">
+                    <button class="btn primary" onclick="saveProgramSlot()">Guardar registro</button>
+                    <button class="btn secondary" onclick="loadProgramSlot()">Leer registro</button>
+                    <button class="btn ghost" onclick="eraseProgramSlot()">Borrar registro</button>
+                </div>
+
+                <div class="status highlight" id="prog_status"></div>
+            </div>
+        </section>
+
+
+
+        <!-- ========== SYSTEM STATUS ========== -->
+        <section class="card">
+            <div class="card__header">
+                <p class="eyebrow">Estado</p>
+                <h2>Estado del sistema</h2>
+            </div>
+
+            <div class="card__content reg-list">
+                <div class="reg-row"><span>Temperatura</span><span id="status_temp">--</span></div>
+                <div class="reg-row"><span>PIR</span><span id="status_pir">--</span></div>
+                <div class="reg-row"><span>Modo actual</span><span id="status_mode">--</span></div>
+                <div class="reg-row"><span>PWM actual</span><span id="status_pwm">--</span></div>
+            </div>
+        </section>
+
+
+    </main>
+</div>
 </body>
 </html>
