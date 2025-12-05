@@ -31,7 +31,6 @@
     <!-- ===================== MAIN GRID ===================== -->
     <main class="grid">
 
-
         <!-- ========== OTA UPDATE ========== -->
         <section class="card">
             <div class="card__header">
@@ -56,7 +55,6 @@
                 <div class="status highlight" id="ota_update_status"></div>
             </div>
         </section>
-
 
 
         <!-- ========== WIFI SETTINGS ========== -->
@@ -93,9 +91,40 @@
         </section>
 
 
+        <!-- ========== MODE SELECTOR ========== -->
+        <section class="card" id="card_mode">
+            <div class="card__header">
+                <p class="eyebrow">Modo de operación</p>
+                <h2>Seleccionar modo</h2>
+            </div>
+
+            <div class="card__content stack">
+                <div class="radio-group">
+                    <label class="radio">
+                        <input type="radio" name="mode_select" value="0" id="mode_select_manual">
+                        <span>Manual</span>
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="mode_select" value="1" id="mode_select_auto">
+                        <span>Automático</span>
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="mode_select" value="2" id="mode_select_prog">
+                        <span>Programado</span>
+                    </label>
+                </div>
+
+                <div class="actions">
+                    <button class="btn primary" onclick="applyModeSelection()">Aplicar modo</button>
+                </div>
+
+                <div class="status" id="mode_status"></div>
+            </div>
+        </section>
+
 
         <!-- ========== MANUAL MODE ========== -->
-        <section class="card">
+        <section class="card hidden" id="card_manual">
             <div class="card__header">
                 <p class="eyebrow">Modo Manual</p>
                 <h2>Control del ventilador</h2>
@@ -121,9 +150,8 @@
         </section>
 
 
-
         <!-- ========== AUTOMATIC MODE ========== -->
-        <section class="card">
+        <section class="card hidden" id="card_auto">
             <div class="card__header">
                 <p class="eyebrow">Modo Automático</p>
                 <h2>Control por temperatura</h2>
@@ -151,9 +179,8 @@
         </section>
 
 
-
-        <!-- ========== PROGRAMACIÓN NUEVA (3 SLOTS) ========== -->
-        <section class="card">
+        <!-- ========== PROGRAMACIÓN (3 SLOTS) ========== -->
+        <section class="card hidden" id="card_prog">
             <div class="card__header">
                 <p class="eyebrow">Programación</p>
                 <h2>Configurar registro</h2>
@@ -213,9 +240,8 @@
         </section>
 
 
-
         <!-- ========== SYSTEM STATUS ========== -->
-        <section class="card">
+        <section class="card" id="card_status">
             <div class="card__header">
                 <p class="eyebrow">Estado</p>
                 <h2>Estado del sistema</h2>
@@ -228,7 +254,6 @@
                 <div class="reg-row"><span>PWM actual</span><span id="status_pwm">--</span></div>
             </div>
         </section>
-
 
     </main>
 </div>

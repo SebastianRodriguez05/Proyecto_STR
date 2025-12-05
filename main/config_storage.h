@@ -21,7 +21,7 @@ typedef struct {
 //  REGISTROS PROGRAMADOS (MODO 2)
 // ===========================
 
-#define PROGRAM_SLOTS 3
+#define PROGRAM_SLOTS 10   // Número de registros programados
 
 typedef struct {
     uint8_t active;      // 0 = inactivo, 1 = activo

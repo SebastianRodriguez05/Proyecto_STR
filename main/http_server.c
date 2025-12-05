@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include <time.h>      // <-- para hora actual (modo programado)
+#include <time.h>      // para hora actual (modo programado)
 
 #include "esp_wifi.h"
 #include "esp_system.h"
@@ -47,7 +47,7 @@
 #include "ntc_driver.h"
 #include "pir_driver.h"
 
-// Tag used for ESP serial console messages
+// Tag usado para logs
 static const char TAG[] = "http_server";
 
 /*======================================================================
@@ -61,9 +61,6 @@ void http_server_fw_update_reset_callback(void *arg);
 static esp_err_t http_server_get_dht_sensor_readings_json_handler(httpd_req_t *req);
 static esp_err_t http_server_toogle_led_handler(httpd_req_t *req);
 static esp_err_t http_server_update_temperature_range_handler(httpd_req_t *req);
-
-// Resumen de registros programados
-static esp_err_t http_server_read_regs_summary_handler(httpd_req_t *req);
 
 // WIFI
 static esp_err_t http_server_wifi_connect_json_handler(httpd_req_t *req);
@@ -83,10 +80,10 @@ static esp_err_t http_server_set_auto_config_handler(httpd_req_t *req);
 static esp_err_t http_server_manual_pwm_handler(httpd_req_t *req);
 static esp_err_t http_server_status_json_handler(httpd_req_t *req);
 
-// Modo programado (usando program_* de config_storage.h)
-static esp_err_t http_server_program_get_handler(httpd_req_t *req);
-static esp_err_t http_server_program_set_handler(httpd_req_t *req);
-static esp_err_t http_server_program_erase_handler(httpd_req_t *req);
+// Modo programado (PROGRAM_SLOTS en config_storage.h)
+static esp_err_t http_server_program_slot_get_handler(httpd_req_t *req);
+static esp_err_t http_server_program_slot_set_handler(httpd_req_t *req);
+static esp_err_t http_server_program_slot_erase_handler(httpd_req_t *req);
 
 // Tarea de control del ventilador
 static void fan_control_task(void *parameter);
@@ -114,13 +111,13 @@ static httpd_handle_t http_server_handle = NULL;
 // HTTP server monitor task handle
 static TaskHandle_t task_http_server_monitor = NULL;
 
-// Queue handle used to manipulate the main queue of events
+// Cola de eventos para el monitor
 static QueueHandle_t http_server_monitor_queue_handle;
 
 // Tarea de control del ventilador
 static TaskHandle_t fan_control_task_handle = NULL;
 
-// Embedded files: JQuery, index.html, app.css, app.js and favicon.ico files
+// Embedded files
 extern const uint8_t jquery_3_3_1_min_js_start[] asm("_binary_jquery_3_3_1_min_js_start");
 extern const uint8_t jquery_3_3_1_min_js_end[]   asm("_binary_jquery_3_3_1_min_js_end");
 extern const uint8_t index_html_start[]          asm("_binary_index_html_start");
@@ -150,7 +147,6 @@ static esp_err_t http_server_get_dht_sensor_readings_json_handler(httpd_req_t *r
 
     char json_response[64];
 
-    // Temperatura REAL del NTC
     float temp_c = ntc_read_celsius();
 
     int len = snprintf(json_response, sizeof(json_response),
@@ -174,10 +170,10 @@ static esp_err_t http_server_toogle_led_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+// Legacy – ya no se usa en la web, pero lo dejamos vacío
 static esp_err_t http_server_update_temperature_range_handler(httpd_req_t *req)
 {
     ESP_LOGI(TAG, "/update_temp_range.json requested");
-    // Handler vacío (legacy). Puedes borrarlo si no lo usas.
     return ESP_OK;
 }
 
@@ -189,10 +185,11 @@ static void log_error_if_nonzero(const char *message, int error_code)
 }
 
 /*======================================================================
- *  MQTT
+ *  MQTT (opcional)
  *====================================================================*/
 
-static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
+                               int32_t event_id, void *event_data)
 {
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
@@ -206,7 +203,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
         break;
-
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
         break;
@@ -480,40 +476,39 @@ esp_err_t http_server_OTA_status_handler(httpd_req_t *req)
 }
 
 /*======================================================================
- *  MODO PROGRAMADO – HANDLERS (GET/SET/ERASE)
+ *  MODO PROGRAMADO – HANDLERS (SLOTS)
  *====================================================================*/
 
-// GET /get_program.json?id=N
-static esp_err_t http_server_program_get_handler(httpd_req_t *req)
+/**
+ * GET /program_slot_get.json?slot=N (1..PROGRAM_SLOTS)
+ */
+static esp_err_t http_server_program_slot_get_handler(httpd_req_t *req)
 {
     char param[8];
-    int id = 0;
+    int slot_index = 0;
 
     if (httpd_req_get_url_query_len(req) > 0) {
         char buf[64];
         if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) == ESP_OK) {
-            if (httpd_query_key_value(buf, "id", param, sizeof(param)) == ESP_OK) {
-                id = atoi(param);
+            if (httpd_query_key_value(buf, "slot", param, sizeof(param)) == ESP_OK) {
+                slot_index = atoi(param);
             }
         }
     }
 
-    if (id < 1 || id > PROGRAM_SLOTS) {
+    if (slot_index < 1 || slot_index > PROGRAM_SLOTS) {
         httpd_resp_set_status(req, "400 Bad Request");
-        httpd_resp_sendstr(req, "Invalid id");
+        httpd_resp_sendstr(req, "Invalid slot");
         return ESP_FAIL;
     }
 
     program_slot_t slot;
-    program_get_slot(id, &slot);   // devuelve default si está fuera de rango internamente
+    program_get_slot(slot_index, &slot);
 
     cJSON *root = cJSON_CreateObject();
-    if (!root) {
-        return ESP_FAIL;
-    }
+    if (!root) return ESP_FAIL;
 
-    // En el front usas active === 1, así que lo mandamos como número 0/1
-    cJSON_AddNumberToObject(root, "active",  slot.active);
+    cJSON_AddBoolToObject(root, "active",  slot.active != 0);
     cJSON_AddNumberToObject(root, "h_start", slot.h_start);
     cJSON_AddNumberToObject(root, "m_start", slot.m_start);
     cJSON_AddNumberToObject(root, "h_end",   slot.h_end);
@@ -526,28 +521,33 @@ static esp_err_t http_server_program_get_handler(httpd_req_t *req)
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, json_str);
-
     free(json_str);
+
     return ESP_OK;
 }
 
-// POST /set_program.json
-// body JSON: { "id":1, "active":1, "h_start":20, "m_start":0, "h_end":21, "m_end":0, "t0":24, "t100":28 }
-static esp_err_t http_server_program_set_handler(httpd_req_t *req)
+/**
+ * POST /program_slot_set.json
+ * body:
+ * {
+ *   "slot":1,
+ *   "active":true,
+ *   "h_start":20, "m_start":0,
+ *   "h_end":21,   "m_end":0,
+ *   "t0":24, "t100":28
+ * }
+ */
+static esp_err_t http_server_program_slot_set_handler(httpd_req_t *req)
 {
     char buf[256];
     int len = httpd_req_recv(req, buf, sizeof(buf) - 1);
-    if (len <= 0) {
-        return ESP_FAIL;
-    }
+    if (len <= 0) return ESP_FAIL;
     buf[len] = '\0';
 
     cJSON *root = cJSON_Parse(buf);
-    if (!root) {
-        return ESP_FAIL;
-    }
+    if (!root) return ESP_FAIL;
 
-    cJSON *j_id     = cJSON_GetObjectItem(root, "id");
+    cJSON *j_slot   = cJSON_GetObjectItem(root, "slot");
     cJSON *j_active = cJSON_GetObjectItem(root, "active");
     cJSON *j_hs     = cJSON_GetObjectItem(root, "h_start");
     cJSON *j_ms     = cJSON_GetObjectItem(root, "m_start");
@@ -556,10 +556,10 @@ static esp_err_t http_server_program_set_handler(httpd_req_t *req)
     cJSON *j_t0     = cJSON_GetObjectItem(root, "t0");
     cJSON *j_t100   = cJSON_GetObjectItem(root, "t100");
 
-    if (!cJSON_IsNumber(j_id)   || !cJSON_IsNumber(j_active) ||
-        !cJSON_IsNumber(j_hs)   || !cJSON_IsNumber(j_ms)     ||
-        !cJSON_IsNumber(j_he)   || !cJSON_IsNumber(j_me)     ||
-        !cJSON_IsNumber(j_t0)   || !cJSON_IsNumber(j_t100)) {
+    if (!cJSON_IsNumber(j_slot)   ||
+        !cJSON_IsNumber(j_hs)     || !cJSON_IsNumber(j_ms)   ||
+        !cJSON_IsNumber(j_he)     || !cJSON_IsNumber(j_me)   ||
+        !cJSON_IsNumber(j_t0)     || !cJSON_IsNumber(j_t100)) {
 
         cJSON_Delete(root);
         httpd_resp_set_status(req, "400 Bad Request");
@@ -567,16 +567,16 @@ static esp_err_t http_server_program_set_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-    int id = j_id->valueint;
-    if (id < 1 || id > PROGRAM_SLOTS) {
+    int slot_index = j_slot->valueint;
+    if (slot_index < 1 || slot_index > PROGRAM_SLOTS) {
         cJSON_Delete(root);
         httpd_resp_set_status(req, "400 Bad Request");
-        httpd_resp_sendstr(req, "Invalid id");
+        httpd_resp_sendstr(req, "Invalid slot");
         return ESP_FAIL;
     }
 
     program_slot_t slot;
-    slot.active  = (uint8_t)j_active->valueint;
+    slot.active  = (uint8_t)(j_active && cJSON_IsTrue(j_active) ? 1 : 0);
     slot.h_start = (uint8_t)j_hs->valueint;
     slot.m_start = (uint8_t)j_ms->valueint;
     slot.h_end   = (uint8_t)j_he->valueint;
@@ -585,17 +585,17 @@ static esp_err_t http_server_program_set_handler(httpd_req_t *req)
     slot.t100    = (int16_t)j_t100->valueint;
 
     ESP_LOGI(TAG,
-             "Saving program id=%d: active=%d %02d:%02d - %02d:%02d, t0=%d, t100=%d",
-             id,
+             "Saving program slot=%d: active=%d %02d:%02d - %02d:%02d, t0=%d, t100=%d",
+             slot_index,
              slot.active,
              slot.h_start, slot.m_start,
              slot.h_end,   slot.m_end,
              slot.t0, slot.t100);
 
-    program_set_slot(id, &slot);
+    program_set_slot(slot_index, &slot);
 
-    // Opcional: al guardar, cambiar a modo programado
-    config_storage_save_mode(2); // 2 = programado
+    // Cambiar a modo programado
+    config_storage_save_mode(2);
 
     cJSON_Delete(root);
 
@@ -604,92 +604,43 @@ static esp_err_t http_server_program_set_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-// POST /erase_program.json
-// body JSON: { "id":1 }
-static esp_err_t http_server_program_erase_handler(httpd_req_t *req)
+/**
+ * POST /program_slot_erase.json
+ * body: { "slot":1 }
+ */
+static esp_err_t http_server_program_slot_erase_handler(httpd_req_t *req)
 {
     char buf[64];
     int len = httpd_req_recv(req, buf, sizeof(buf) - 1);
-    if (len <= 0) {
-        return ESP_FAIL;
-    }
+    if (len <= 0) return ESP_FAIL;
     buf[len] = '\0';
 
     cJSON *root = cJSON_Parse(buf);
-    if (!root) {
-        return ESP_FAIL;
-    }
+    if (!root) return ESP_FAIL;
 
-    cJSON *j_id = cJSON_GetObjectItem(root, "id");
-    if (!cJSON_IsNumber(j_id)) {
+    cJSON *j_slot = cJSON_GetObjectItem(root, "slot");
+    if (!cJSON_IsNumber(j_slot)) {
         cJSON_Delete(root);
         httpd_resp_set_status(req, "400 Bad Request");
-        httpd_resp_sendstr(req, "Invalid id");
+        httpd_resp_sendstr(req, "Invalid slot");
         return ESP_FAIL;
     }
 
-    int id = j_id->valueint;
-    if (id < 1 || id > PROGRAM_SLOTS) {
+    int slot_index = j_slot->valueint;
+    if (slot_index < 1 || slot_index > PROGRAM_SLOTS) {
         cJSON_Delete(root);
         httpd_resp_set_status(req, "400 Bad Request");
-        httpd_resp_sendstr(req, "Invalid id");
+        httpd_resp_sendstr(req, "Invalid slot");
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "Erasing program id=%d", id);
-    program_erase_slot(id);
+    ESP_LOGI(TAG, "Erasing program slot=%d", slot_index);
+    program_erase_slot(slot_index);
 
     cJSON_Delete(root);
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
-    return ESP_OK;
-}
-
-/*======================================================================
- *  RESUMEN DE REGISTROS – /read_regs.json
- *====================================================================*/
-
-// Devuelve algo como:
-// { "reg1":"--", "reg2":"20:00-21:00", ... "reg10":"--" }
-static esp_err_t http_server_read_regs_summary_handler(httpd_req_t *req)
-{
-    cJSON *root = cJSON_CreateObject();
-    if (!root) {
-        return ESP_FAIL;
-    }
-
-    // Mostramos siempre 10 filas en la web, pero solo hay PROGRAM_SLOTS reales
-    for (int i = 1; i <= 10; ++i) {
-        char key[8];
-        snprintf(key, sizeof(key), "reg%d", i);
-
-        if (i > PROGRAM_SLOTS) {
-            cJSON_AddStringToObject(root, key, "--");
-            continue;
-        }
-
-        program_slot_t slot;
-        program_get_slot(i, &slot);
-
-        if (!slot.active) {
-            cJSON_AddStringToObject(root, key, "--");
-        } else {
-            char value[32];
-            snprintf(value, sizeof(value),
-                     "%02d:%02d-%02d:%02d",
-                     slot.h_start, slot.m_start,
-                     slot.h_end,   slot.m_end);
-            cJSON_AddStringToObject(root, key, value);
-        }
-    }
-
-    char *json_str = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_sendstr(req, json_str);
-    free(json_str);
     return ESP_OK;
 }
 
@@ -882,36 +833,27 @@ static httpd_handle_t http_server_configure(void)
         };
         httpd_register_uri_handler(http_server_handle, &status_json);
 
-        // Resumen "Tiempos configurados"
-        httpd_uri_t read_regs_uri = {
-            .uri      = "/read_regs.json",
-            .method   = HTTP_GET,
-            .handler  = http_server_read_regs_summary_handler,
-            .user_ctx = NULL
-        };
-        httpd_register_uri_handler(http_server_handle, &read_regs_uri);
-
         // Modo programado: get / set / erase
         httpd_uri_t program_get_uri = {
-            .uri      = "/get_program.json",
+            .uri      = "/program_slot_get.json",
             .method   = HTTP_GET,
-            .handler  = http_server_program_get_handler,
+            .handler  = http_server_program_slot_get_handler,
             .user_ctx = NULL
         };
         httpd_register_uri_handler(http_server_handle, &program_get_uri);
 
         httpd_uri_t program_set_uri = {
-            .uri      = "/set_program.json",
+            .uri      = "/program_slot_set.json",
             .method   = HTTP_POST,
-            .handler  = http_server_program_set_handler,
+            .handler  = http_server_program_slot_set_handler,
             .user_ctx = NULL
         };
         httpd_register_uri_handler(http_server_handle, &program_set_uri);
 
         httpd_uri_t program_erase_uri = {
-            .uri      = "/erase_program.json",
+            .uri      = "/program_slot_erase.json",
             .method   = HTTP_POST,
-            .handler  = http_server_program_erase_handler,
+            .handler  = http_server_program_slot_erase_handler,
             .user_ctx = NULL
         };
         httpd_register_uri_handler(http_server_handle, &program_erase_uri);
@@ -1070,12 +1012,11 @@ static esp_err_t http_server_set_auto_config_handler(httpd_req_t *req)
     int tmin = j_tmin->valueint;
     int tmax = j_tmax->valueint;
 
-    // Guardar en flash
     config_storage_save_auto_tmin(tmin);
     config_storage_save_auto_tmax(tmax);
 
-    // Cambiar modo
-    config_storage_save_mode(1);   // 1 = automático
+    // Cambiar modo a automático
+    config_storage_save_mode(1);
 
     cJSON_Delete(root);
 
@@ -1129,8 +1070,8 @@ static esp_err_t http_server_status_json_handler(httpd_req_t *req)
 {
     ESP_LOGI(TAG, "/status.json requested");
 
-    float    temp_c = ntc_read_celsius();   // temperatura real
-    int      pir    = pir_read();           // 0/1
+    float    temp_c = ntc_read_celsius();
+    int      pir    = pir_read();
     uint8_t  mode   = config_storage_get_mode();
     uint8_t  pwm    = fan_get_percent();
 
@@ -1161,13 +1102,12 @@ static void fan_control_task(void *parameter)
             pwm = config_storage_get_manual_pwm();
         }
         else if (mode == 1) {
-            // MODO AUTOMÁTICO: depende de presencia y T_min/T_max
+            // MODO AUTOMÁTICO: presencia + T_min/T_max
             if (pir) {
                 int tmin = config_storage_get_auto_tmin();
                 int tmax = config_storage_get_auto_tmax();
 
                 if (tmax <= tmin) {
-                    // Evitar división por cero: si está mal configurado, forzamos 100%
                     pwm = 100;
                 } else if (temp_c <= tmin) {
                     pwm = 0;
@@ -1178,7 +1118,6 @@ static void fan_control_task(void *parameter)
                                     (float)(tmax - tmin));
                 }
             } else {
-                // Sin presencia → 0 %
                 pwm = 0;
             }
         }
@@ -1193,25 +1132,20 @@ static void fan_control_task(void *parameter)
                 uint8_t pwm_calc = 0;
                 bool found = false;
 
-                for (int id = 1; id <= PROGRAM_SLOTS; ++id) {
+                for (int slot_index = 1; slot_index <= PROGRAM_SLOTS; ++slot_index) {
                     program_slot_t slot;
-                    program_get_slot(id, &slot);
-                    if (!slot.active) {
-                        continue;
-                    }
+                    program_get_slot(slot_index, &slot);
+                    if (!slot.active) continue;
 
                     int start_min = slot.h_start * 60 + slot.m_start;
                     int end_min   = slot.h_end   * 60 + slot.m_end;
 
                     bool inside = false;
                     if (start_min == end_min) {
-                        // Intervalo vacío, nunca entra
                         inside = false;
                     } else if (start_min < end_min) {
-                        // Intervalo normal (no cruza medianoche)
                         inside = (cur_min >= start_min && cur_min < end_min);
                     } else {
-                        // Intervalo que cruza medianoche
                         inside = (cur_min >= start_min || cur_min < end_min);
                     }
 
@@ -1227,30 +1161,21 @@ static void fan_control_task(void *parameter)
                                                  (float)(slot.t100 - slot.t0));
                         }
                         found = true;
-                        break;   // usamos el primer registro activo que coincida
+                        break;
                     }
                 }
 
-                if (found) {
-                    pwm = pwm_calc;
-                } else {
-                    // No hay ningún registro activo que aplique en esta hora
-                    pwm = 0;
-                }
+                pwm = found ? pwm_calc : 0;
             } else {
-                // Sin presencia → 0 %
                 pwm = 0;
             }
         }
         else {
-            // Modo desconocido → por seguridad, apagar
+            // Modo desconocido → seguridad
             pwm = 0;
         }
 
-        // Aplicar resultado al ventilador
         fan_set_percent(pwm);
-
-        // Periodo de actualización (1 s)
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
@@ -1266,7 +1191,6 @@ void http_server_start(void)
         if (http_server_handle) {
             ESP_LOGI("HTTP_SERVER", "HTTP server started");
 
-            // Crear tarea de control del ventilador (si no existe)
             if (fan_control_task_handle == NULL) {
                 xTaskCreatePinnedToCore(
                     fan_control_task,
@@ -1275,7 +1199,7 @@ void http_server_start(void)
                     NULL,
                     5,
                     &fan_control_task_handle,
-                    0   
+                    0   // core 0 en ESP32-C6
                 );
             }
 

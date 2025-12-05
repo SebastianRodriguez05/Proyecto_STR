@@ -5,7 +5,7 @@
  */
 var seconds = null;
 var otaTimerVar = null;
-var wifiConnectInterval = null;
+var currentMode = null; // 0=manual,1=auto,2=programado
 
 /**
  * ============================================
@@ -14,7 +14,10 @@ var wifiConnectInterval = null;
  */
 $(document).ready(function () {
 
-    // Empezar a leer el estado general del sistema
+    // Primer refresh inmediato de estado
+    getStatusValues();
+
+    // Empezar a leer el estado general del sistema cada 2.5 s
     startStatusInterval();
 
     // Cargar configuración del modo manual
@@ -22,6 +25,10 @@ $(document).ready(function () {
 
     // Cargar configuración del modo automático
     loadAutoConfig();
+
+    // Cargar por defecto el registro 1 (si existe)
+    $("#prog_id").val("1");
+    loadProgramSlot();
 
     // Evento del slider de modo manual
     $("#manual_pwm").on("input change", function () {
@@ -120,7 +127,7 @@ function getStatusValues() {
             $("#status_pir").text(data.pir ? "Presencia" : "Sin presencia");
         }
 
-        // Modo
+        // Modo actual
         if (typeof data.mode !== "undefined") {
             let txt =
                 data.mode === 0 ? "Manual" :
@@ -128,6 +135,12 @@ function getStatusValues() {
                 data.mode === 2 ? "Programado" : "Desconocido";
 
             $("#status_mode").text(txt);
+
+            // Sincronizar el selector de modo (radios) con el valor real
+            $("input[name='mode_select'][value='" + data.mode + "']").prop("checked", true);
+
+            // Mostrar/ocultar tarjetas según modo
+            showModeCards(data.mode);
         }
 
         // PWM actual
@@ -242,8 +255,10 @@ function loadAutoConfig() {
 }
 
 function saveAutoConfig() {
-    let tmin = parseInt($("#auto_tmin").val());
-    let tmax = parseInt($("#auto_tmax").val());
+    let tmin = parseInt($("#auto_tmin").val(), 10);
+    let tmax = parseInt($("#auto_tmax").val(), 10);
+
+    $("#auto_config_status").text("Guardando...");
 
     $.ajax({
         url: "/set_auto_config.json",
@@ -252,25 +267,31 @@ function saveAutoConfig() {
         data: JSON.stringify({ tmin: tmin, tmax: tmax }),
         success: function () {
             $("#auto_config_status").text("Configuración guardada.");
+        },
+        error: function () {
+            $("#auto_config_status").text("Error al guardar.");
         }
     });
 }
 
 
 /* ============================================================
- *            MODO PROGRAMADO — NUEVO SISTEMA
+ *            MODO PROGRAMADO — 3 REGISTROS
+ *   (usa /get_program.json, /set_program.json, /erase_program.json)
  * ============================================================ */
 
 function saveProgramSlot() {
+    let id = parseInt($("#prog_id").val(), 10); // 1..3
+
     let obj = {
-        id:      parseInt($("#prog_id").val()),
+        id:      id,
         active:  $("#prog_active").is(":checked") ? 1 : 0,
-        h_start: parseInt($("#prog_h_start").val()),
-        m_start: parseInt($("#prog_m_start").val()),
-        h_end:   parseInt($("#prog_h_end").val()),
-        m_end:   parseInt($("#prog_m_end").val()),
-        t0:      parseInt($("#prog_t0").val()),
-        t100:    parseInt($("#prog_t100").val())
+        h_start: parseInt($("#prog_h_start").val(), 10),
+        m_start: parseInt($("#prog_m_start").val(), 10),
+        h_end:   parseInt($("#prog_h_end").val(), 10),
+        m_end:   parseInt($("#prog_m_end").val(), 10),
+        t0:      parseInt($("#prog_t0").val(), 10),
+        t100:    parseInt($("#prog_t100").val(), 10)
     };
 
     $("#prog_status").text("Guardando...");
@@ -290,7 +311,7 @@ function saveProgramSlot() {
 }
 
 function loadProgramSlot() {
-    let id = parseInt($("#prog_id").val());
+    let id = parseInt($("#prog_id").val(), 10); // 1..3
 
     $("#prog_status").text("Leyendo...");
 
@@ -315,7 +336,7 @@ function loadProgramSlot() {
 }
 
 function eraseProgramSlot() {
-    let id = parseInt($("#prog_id").val());
+    let id = parseInt($("#prog_id").val(), 10); // 1..3
 
     $("#prog_status").text("Borrando...");
 
@@ -332,4 +353,38 @@ function eraseProgramSlot() {
             $("#prog_status").text("Error al borrar.");
         }
     });
+}
+
+
+/* ============================================================
+ *        SELECTOR DE MODO (SOLO VISUAL / ESTÉTICO)
+ * ============================================================ */
+
+function showModeCards(mode) {
+    currentMode = mode;
+
+    $("#card_manual").toggleClass("hidden", mode !== 0);
+    $("#card_auto").toggleClass("hidden",  mode !== 1);
+    $("#card_prog").toggleClass("hidden",  mode !== 2);
+}
+
+function applyModeSelection() {
+    const val = parseInt($("input[name='mode_select']:checked").val(), 10);
+
+    if (isNaN(val)) {
+        $("#mode_status").text("Selecciona un modo primero.");
+        return;
+    }
+
+    showModeCards(val);
+
+    let txt =
+        val === 0 ? "Manual" :
+        val === 1 ? "Automático" :
+        "Programado";
+
+    $("#mode_status").text("Mostrando controles del modo " + txt + ".");
+
+    // Nota: el modo real del firmware se sigue cambiando
+    // al guardar PWM manual, configuración automática o registros.
 }
