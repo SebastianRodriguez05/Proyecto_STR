@@ -17,7 +17,6 @@
 #include "nvs.h"
 
 #include "http_server.h"
-#include "rgb_led.h"
 #include "tasks_common.h"
 #include "wifi_app.h"
 #include "esp_sntp.h"
@@ -695,7 +694,6 @@ static void wifi_app_task(void *pvParameters)
 					ESP_LOGI(TAG, "WIFI_APP_MSG_START_HTTP_SERVER");
 
 					http_server_start();
-					rgb_led_http_server_started();
 
 					break;
 
@@ -716,7 +714,6 @@ static void wifi_app_task(void *pvParameters)
 				case WIFI_APP_MSG_STA_CONNECTED_GOT_IP:
 					ESP_LOGI(TAG, "WIFI_APP_MSG_STA_CONNECTED_GOT_IP");
 
-					rgb_led_wifi_connected();
 					http_server_monitor_send_message(HTTP_MSG_WIFI_CONNECT_SUCCESS);
 
 					break;
@@ -868,7 +865,6 @@ void wifi_app_start(void)
 	ESP_LOGI(TAG, "STARTING WIFI APPLICATION");
 
 	// Start WiFi started LED
-	rgb_led_wifi_app_started();
 
 	// Disable default WiFi logging messages
 	esp_log_level_set("wifi", ESP_LOG_NONE);

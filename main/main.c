@@ -3,7 +3,7 @@
 #include "config_storage.h"
 #include "fan_driver.h"
 #include "ntc_driver.h"
-#include "pir_driver.h"
+#include "sen_driver.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
 

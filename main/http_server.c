@@ -45,7 +45,7 @@
 #include "config_storage.h"
 #include "fan_driver.h"
 #include "ntc_driver.h"
-#include "pir_driver.h"
+#include "sen_driver.h"
 
 // Tag usado para logs
 static const char TAG[] = "http_server";

@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "project_part_2",
-    "project_version":    "1",
+    "project_version":    "dbc8e68-dirty",
     "project_path":       "D:/esp_projects/project_http",
     "idf_path":           "D:/STR_ESP_1/esp/v5.5.1/esp-idf",
     "build_dir":          "D:/esp_projects/project_http/build",
@@ -895,8 +895,8 @@
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "D:/esp_projects/project_http/build/esp-idf/main/libmain.a",
-            "sources": [ "D:/esp_projects/project_http/main/main.c", "D:/esp_projects/project_http/main/http_server.c", "D:/esp_projects/project_http/main/wifi_app.c", "D:/esp_projects/project_http/main/rgb_led.c", "D:/esp_projects/project_http/main/fan_driver/fan_driver.c", "D:/esp_projects/project_http/main/ntc_driver/ntc_driver.c", "D:/esp_projects/project_http/main/pir_driver/pir_driver.c", "D:/esp_projects/project_http/main/config_storage.c", "D:/esp_projects/project_http/build/index.html.S", "D:/esp_projects/project_http/build/app.css.S", "D:/esp_projects/project_http/build/app.js.S", "D:/esp_projects/project_http/build/jquery-3.3.1.min.js.S", "D:/esp_projects/project_http/build/favicon.ico.S" ],
-            "include_dirs": [ ".", "fan_driver", "ntc_driver", "pir_driver" ]
+            "sources": [ "D:/esp_projects/project_http/main/main.c", "D:/esp_projects/project_http/main/http_server.c", "D:/esp_projects/project_http/main/wifi_app.c", "D:/esp_projects/project_http/main/fan_driver/fan_driver.c", "D:/esp_projects/project_http/main/ntc_driver/ntc_driver.c", "D:/esp_projects/project_http/main/sen_driver/sen_driver.c", "D:/esp_projects/project_http/main/config_storage.c", "D:/esp_projects/project_http/build/index.html.S", "D:/esp_projects/project_http/build/app.css.S", "D:/esp_projects/project_http/build/app.js.S", "D:/esp_projects/project_http/build/jquery-3.3.1.min.js.S", "D:/esp_projects/project_http/build/favicon.ico.S" ],
+            "include_dirs": [ ".", "fan_driver", "ntc_driver", "sen_driver" ]
         },
         "mbedtls": {
             "alias": "idf::mbedtls",
@@ -2401,7 +2401,7 @@
             "priv_reqs": [ "esp_wifi", "nvs_flash", "esp_http_server", "esp_netif", "esp_driver_gpio", "esp_driver_ledc", "esp_adc", "freertos", "app_update", "esp_timer", "json", "mqtt" ],
             "managed_reqs": [],
             "managed_priv_reqs": [],
-            "include_dirs": [ ".", "fan_driver", "ntc_driver", "pir_driver" ]
+            "include_dirs": [ ".", "fan_driver", "ntc_driver", "sen_driver" ]
         }
     },
     "debug_prefix_map_gdbinit": "",

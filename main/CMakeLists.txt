@@ -3,16 +3,16 @@ idf_component_register(
         "main.c"
         "http_server.c"
         "wifi_app.c"
-        "rgb_led.c"
+        
         "fan_driver/fan_driver.c"
         "ntc_driver/ntc_driver.c"
-        "pir_driver/pir_driver.c"
+        "sen_driver/sen_driver.c"
         "config_storage.c"
     INCLUDE_DIRS
         "."
         "fan_driver"
         "ntc_driver"
-        "pir_driver"
+        "sen_driver"
     PRIV_REQUIRES
         esp_wifi
         nvs_flash

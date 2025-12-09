@@ -13,21 +13,7 @@
 <body>
 <div class="page">
 
-    <!-- ===================== HERO ===================== -->
-    <header class="hero">
-        <div class="hero__text">
-            <p class="eyebrow">ESP32</p>
-            <h1>Control Center</h1>
-            <p class="subtitle">Gestiona tu dispositivo, credenciales y horarios en un panel limpio inspirado en iOS.</p>
-        </div>
-
-        <div class="hero__badge">
-            <div class="badge__label">Latest Firmware</div>
-            <div class="badge__value" id="latest_firmware">--</div>
-        </div>
-    </header>
-
-
+    
     <!-- ===================== MAIN GRID ===================== -->
     <main class="grid">
 
@@ -56,7 +42,6 @@
             </div>
         </section>
 
-
         <!-- ========== WIFI SETTINGS ========== -->
         <section class="card">
             <div class="card__header">
@@ -82,7 +67,6 @@
 
                 <div class="actions">
                     <button class="btn primary" onclick="checkCredentials()">Connect</button>
-                    <button class="btn secondary" onclick="toogle_led()">Toggle LED</button>
                 </div>
 
                 <div class="status error" id="wifi_connect_credentials_errors"></div>
@@ -90,9 +74,8 @@
             </div>
         </section>
 
-
         <!-- ========== MODE SELECTOR ========== -->
-        <section class="card" id="card_mode">
+        <section class="card" id="ModeSelect">
             <div class="card__header">
                 <p class="eyebrow">Modo de operación</p>
                 <h2>Seleccionar modo</h2>
@@ -100,30 +83,31 @@
 
             <div class="card__content stack">
                 <div class="radio-group">
-                    <label class="radio">
-                        <input type="radio" name="mode_select" value="0" id="mode_select_manual">
+                    <label class="checkbox">
+                        <input type="radio" name="mode_sel" value="0">
                         <span>Manual</span>
                     </label>
-                    <label class="radio">
-                        <input type="radio" name="mode_select" value="1" id="mode_select_auto">
+                    <label class="checkbox">
+                        <input type="radio" name="mode_sel" value="1">
                         <span>Automático</span>
                     </label>
-                    <label class="radio">
-                        <input type="radio" name="mode_select" value="2" id="mode_select_prog">
+                    <label class="checkbox">
+                        <input type="radio" name="mode_sel" value="2">
                         <span>Programado</span>
                     </label>
                 </div>
 
                 <div class="actions">
-                    <button class="btn primary" onclick="applyModeSelection()">Aplicar modo</button>
+                    <button class="btn primary" onclick="setModeFromUI()">
+                        Aplicar modo
+                    </button>
                 </div>
 
-                <div class="status" id="mode_status"></div>
+                <div class="status highlight" id="mode_status"></div>
             </div>
         </section>
 
-
-        <!-- ========== MANUAL MODE ========== -->
+        <!-- ========== MANUAL MODE (OCULTO AL INICIO) ========== -->
         <section class="card hidden" id="card_manual">
             <div class="card__header">
                 <p class="eyebrow">Modo Manual</p>
@@ -149,8 +133,7 @@
             </div>
         </section>
 
-
-        <!-- ========== AUTOMATIC MODE ========== -->
+        <!-- ========== AUTOMATIC MODE (OCULTO AL INICIO) ========== -->
         <section class="card hidden" id="card_auto">
             <div class="card__header">
                 <p class="eyebrow">Modo Automático</p>
@@ -178,9 +161,8 @@
             </div>
         </section>
 
-
-        <!-- ========== PROGRAMACIÓN (3 SLOTS) ========== -->
-        <section class="card hidden" id="card_prog">
+        <!-- ========== PROGRAMACIÓN (OCULTO AL INICIO) ========== -->
+        <section class="card hidden" id="card_program">
             <div class="card__header">
                 <p class="eyebrow">Programación</p>
                 <h2>Configurar registro</h2>
@@ -239,9 +221,8 @@
             </div>
         </section>
 
-
         <!-- ========== SYSTEM STATUS ========== -->
-        <section class="card" id="card_status">
+        <section class="card">
             <div class="card__header">
                 <p class="eyebrow">Estado</p>
                 <h2>Estado del sistema</h2>
@@ -249,7 +230,7 @@
 
             <div class="card__content reg-list">
                 <div class="reg-row"><span>Temperatura</span><span id="status_temp">--</span></div>
-                <div class="reg-row"><span>PIR</span><span id="status_pir">--</span></div>
+                <div class="reg-row"><span>Estado</span><span id="status_pir">--</span></div>
                 <div class="reg-row"><span>Modo actual</span><span id="status_mode">--</span></div>
                 <div class="reg-row"><span>PWM actual</span><span id="status_pwm">--</span></div>
             </div>

@@ -5,7 +5,6 @@
  */
 var seconds = null;
 var otaTimerVar = null;
-var currentMode = null; // 0=manual,1=auto,2=programado
 
 /**
  * ============================================
@@ -14,11 +13,9 @@ var currentMode = null; // 0=manual,1=auto,2=programado
  */
 $(document).ready(function () {
 
-    // Primer refresh inmediato de estado
-    getStatusValues();
-
-    // Empezar a leer el estado general del sistema cada 2.5 s
+    // Empezar a leer el estado general del sistema
     startStatusInterval();
+    getStatusValues(); // primer refresh inmediato
 
     // Cargar configuración del modo manual
     loadManualConfig();
@@ -26,16 +23,37 @@ $(document).ready(function () {
     // Cargar configuración del modo automático
     loadAutoConfig();
 
-    // Cargar por defecto el registro 1 (si existe)
-    $("#prog_id").val("1");
+    // Cargar por defecto el registro 1
     loadProgramSlot();
 
     // Evento del slider de modo manual
     $("#manual_pwm").on("input change", function () {
         onManualSliderChange(this);
     });
+
+    // NUEVO: cuando el usuario selecciona un modo, mostrar la tarjeta correcta
+    $("input[name='mode_sel']").on("change", function () {
+        const mode = parseInt(this.value, 10);
+        updateModeCards(mode);
+    });
 });
 
+/* ============================================================
+ *     MOSTRAR / OCULTAR CARTAS SEGÚN EL MODO SELECCIONADO
+ * ============================================================ */
+function updateModeCards(mode) {
+
+    // Ocultar todas al inicio
+    $("#card_manual, #card_auto, #card_program").addClass("hidden");
+
+    if (mode === 0) {
+        $("#card_manual").removeClass("hidden");
+    } else if (mode === 1) {
+        $("#card_auto").removeClass("hidden");
+    } else if (mode === 2) {
+        $("#card_program").removeClass("hidden");
+    }
+}
 
 /* ============================================================
  *                     OTA — FIRMWARE UPDATE
@@ -107,7 +125,6 @@ function otaRebootTimer() {
     }
 }
 
-
 /* ============================================================
  *                      STATUS DEL SISTEMA
  * ============================================================ */
@@ -136,11 +153,11 @@ function getStatusValues() {
 
             $("#status_mode").text(txt);
 
-            // Sincronizar el selector de modo (radios) con el valor real
-            $("input[name='mode_select'][value='" + data.mode + "']").prop("checked", true);
+            // Sincronizar el selector de modo con el valor real
+            $("input[name='mode_sel'][value='" + data.mode + "']").prop("checked", true);
 
-            // Mostrar/ocultar tarjetas según modo
-            showModeCards(data.mode);
+            // NUEVO: mostrar la tarjeta correspondiente al modo
+            updateModeCards(parseInt(data.mode, 10));
         }
 
         // PWM actual
@@ -153,7 +170,6 @@ function getStatusValues() {
 function startStatusInterval() {
     setInterval(getStatusValues, 2500);
 }
-
 
 /* ============================================================
  *                     WIFI
@@ -176,7 +192,7 @@ function checkCredentials() {
         $("#wifi_connect_credentials_errors").html(error);
     } else {
         $("#wifi_connect_credentials_errors").html("");
-        connectWifi();
+                                connectWifi();
     }
 }
 
@@ -205,7 +221,6 @@ function toogle_led() {
         method: "POST"
     });
 }
-
 
 /* ============================================================
  *                MODO MANUAL — PWM
@@ -242,7 +257,6 @@ function sendManualPwm() {
     });
 }
 
-
 /* ============================================================
  *           MODO AUTOMÁTICO — T_min / T_max
  * ============================================================ */
@@ -255,8 +269,8 @@ function loadAutoConfig() {
 }
 
 function saveAutoConfig() {
-    let tmin = parseInt($("#auto_tmin").val(), 10);
-    let tmax = parseInt($("#auto_tmax").val(), 10);
+    let tmin = parseInt($("#auto_tmin").val());
+    let tmax = parseInt($("#auto_tmax").val());
 
     $("#auto_config_status").text("Guardando...");
 
@@ -274,18 +288,16 @@ function saveAutoConfig() {
     });
 }
 
-
 /* ============================================================
  *            MODO PROGRAMADO — 3 REGISTROS
- *   (usa /get_program.json, /set_program.json, /erase_program.json)
  * ============================================================ */
 
 function saveProgramSlot() {
-    let id = parseInt($("#prog_id").val(), 10); // 1..3
+    let slotIndex = parseInt($("#prog_id").val(), 10);
 
     let obj = {
-        id:      id,
-        active:  $("#prog_active").is(":checked") ? 1 : 0,
+        slot:    slotIndex,
+        active:  $("#prog_active").is(":checked"),
         h_start: parseInt($("#prog_h_start").val(), 10),
         m_start: parseInt($("#prog_m_start").val(), 10),
         h_end:   parseInt($("#prog_h_end").val(), 10),
@@ -297,7 +309,7 @@ function saveProgramSlot() {
     $("#prog_status").text("Guardando...");
 
     $.ajax({
-        url: "/set_program.json",
+        url: "/program_slot_set.json",
         method: "POST",
         contentType: "application/json",
         data: JSON.stringify(obj),
@@ -311,16 +323,16 @@ function saveProgramSlot() {
 }
 
 function loadProgramSlot() {
-    let id = parseInt($("#prog_id").val(), 10); // 1..3
+    let slotIndex = parseInt($("#prog_id").val(), 10);
 
     $("#prog_status").text("Leyendo...");
 
     $.ajax({
-        url: "/get_program.json?id=" + id,
+        url: "/program_slot_get.json?slot=" + slotIndex,
         method: "GET",
         dataType: "json",
         success: function (data) {
-            $("#prog_active").prop("checked", data.active === 1);
+            $("#prog_active").prop("checked", !!data.active);
             $("#prog_h_start").val(data.h_start);
             $("#prog_m_start").val(data.m_start);
             $("#prog_h_end").val(data.h_end);
@@ -336,15 +348,15 @@ function loadProgramSlot() {
 }
 
 function eraseProgramSlot() {
-    let id = parseInt($("#prog_id").val(), 10); // 1..3
+    let slotIndex = parseInt($("#prog_id").val(), 10);
 
     $("#prog_status").text("Borrando...");
 
     $.ajax({
-        url: "/erase_program.json",
+        url: "/program_slot_erase.json",
         method: "POST",
         contentType: "application/json",
-        data: JSON.stringify({ id: id }),
+        data: JSON.stringify({ slot: slotIndex }),
         success: function () {
             $("#prog_status").text("Registro borrado.");
             $("#prog_active").prop("checked", false);
@@ -355,36 +367,29 @@ function eraseProgramSlot() {
     });
 }
 
-
 /* ============================================================
- *        SELECTOR DE MODO (SOLO VISUAL / ESTÉTICO)
+ *            SELECTOR EXPLÍCITO DE MODO
  * ============================================================ */
-
-function showModeCards(mode) {
-    currentMode = mode;
-
-    $("#card_manual").toggleClass("hidden", mode !== 0);
-    $("#card_auto").toggleClass("hidden",  mode !== 1);
-    $("#card_prog").toggleClass("hidden",  mode !== 2);
-}
-
-function applyModeSelection() {
-    const val = parseInt($("input[name='mode_select']:checked").val(), 10);
-
-    if (isNaN(val)) {
+function setModeFromUI() {
+    const sel = $("input[name='mode_sel']:checked").val();
+    if (typeof sel === "undefined") {
         $("#mode_status").text("Selecciona un modo primero.");
         return;
     }
 
-    showModeCards(val);
+    const mode = parseInt(sel, 10);
 
-    let txt =
-        val === 0 ? "Manual" :
-        val === 1 ? "Automático" :
-        "Programado";
-
-    $("#mode_status").text("Mostrando controles del modo " + txt + ".");
-
-    // Nota: el modo real del firmware se sigue cambiando
-    // al guardar PWM manual, configuración automática o registros.
+    if (mode === 0) {
+        $("#mode_status").text("Aplicando modo Manual...");
+        sendManualPwm();
+    } else if (mode === 1) {
+        $("#mode_status").text("Aplicando modo Automático...");
+        saveAutoConfig();
+    } else if (mode === 2) {
+        $("#mode_status").text("Aplicando modo Programado...");
+        saveProgramSlot();
+    } else {
+        $("#mode_status").text("Modo inválido.");
+        return;
+    }
 }
